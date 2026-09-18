@@ -469,20 +469,7 @@
     try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
   }
 
-  function seed(){
-    var t = Date.now();
-    return [
-      { id:uid(), tpl:"", w:240, h:180, material:"steel", corners:"округлі", grade:"430",
-        holes:"2 отвори ⌀3 мм — по центру зверху та знизу.", qty:1, manual:false, manualPrice:null,
-        done:true, received:true, payDate:"", createdAt:t-86400000*2, updatedAt:t-86400000*2, deleted:false },
-      { id:uid(), tpl:"", w:250, h:200, material:"painted", corners:"округлі", grade:"430",
-        holes:"4 отвори ⌀3 мм — по центру кожної сторони.", qty:1, manual:false, manualPrice:null,
-        done:true, received:false, payDate:"", createdAt:t-86400000, updatedAt:t-86400000, deleted:false },
-      { id:uid(), tpl:"індивідуальний дизайн", w:400, h:300, material:"painted", corners:"інше", grade:"",
-        holes:"переробка Віктор", qty:1, manual:false, manualPrice:null,
-        done:false, received:false, payDate:"", createdAt:t, updatedAt:t, deleted:false }
-    ];
-  }
+  function seed(){ return []; }
 
   var state = load();
 
