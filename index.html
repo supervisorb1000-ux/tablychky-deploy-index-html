@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Таблички B1000</title>
+<style>
+  :root{
+    --bg:#070a08; --bg-2:#0b100c;
+    --ink:#f2f6f1; --ink-soft:#aab6a8; --ink-faint:#6d786c;
+    --glass-line:rgba(255,255,255,0.10); --glass-line-soft:rgba(255,255,255,0.06);
+    --field:rgba(255,255,255,0.05); --field-line:rgba(255,255,255,0.12);
+    --pill:rgba(255,255,255,0.055); --pill-line:rgba(255,255,255,0.12);
+    --accent:#33d17a; --accent-2:#8af0a8; --accent-deep:#0e5e33; --accent-ink:#052012;
+    --steel-glass-1:rgba(51,209,122,0.22); --steel-glass-2:rgba(14,94,51,0.10);
+    --painted-glass-1:rgba(255,255,255,0.08); --painted-glass-2:rgba(0,0,0,0.25);
+    --warn:#e0a23d; --danger:#e0665c;
+    --shadow:0 18px 40px rgba(0,0,0,0.55);
+    --glow:0 0 60px rgba(51,209,122,0.18);
+    --radius:22px;
+    color-scheme:dark;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{height:100%;}
+  body{
+    margin:0; font-family:'Manrope',system-ui,sans-serif; color:var(--ink);
+    background:
+      radial-gradient(60% 40% at 8% -6%, rgba(255,255,255,0.06), transparent 60%),
+      radial-gradient(70% 55% at 100% 100%, rgba(51,209,122,0.20), transparent 60%),
+      radial-gradient(50% 40% at 85% 15%, rgba(51,209,122,0.10), transparent 65%),
+      linear-gradient(180deg, var(--bg), var(--bg-2));
+    background-attachment:fixed;
+    min-height:100%; height:100%;
+    padding-inline:16px;
+  }
+  img{max-width:100%;}
+  [hidden]{display:none!important;}
+  h1,h2,h3{margin:0; text-wrap:balance;}
+  .num{font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums;}
+  button{font-family:inherit;}
+
+  header.top{
+    position:sticky; top:env(safe-area-inset-top,0px); z-index:20;
+    padding-block:16px 12px; background:linear-gradient(180deg,var(--bg) 65%,transparent);
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+  }
+  .brand{display:flex; align-items:center; gap:11px;}
+  .brand .mark{
+    width:40px; height:40px; border-radius:13px; display:grid; place-items:center; position:relative;
+    background:linear-gradient(155deg,var(--accent),var(--accent-deep));
+    color:var(--accent-ink); font-weight:800; font-size:16px;
+    box-shadow:0 8px 20px rgba(51,209,122,0.35), inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+  .brand h1{font-size:17.5px; font-weight:800; letter-spacing:-0.01em;}
+  .brand .sub{font-size:11.5px; color:var(--ink-faint); font-weight:600; margin-top:1px;}
+  .icon-btn{
+    width:40px; height:40px; border-radius:13px; border:1px solid var(--pill-line);
+    background:var(--pill); backdrop-filter:blur(20px); display:grid; place-items:center;
+    color:var(--ink-soft); cursor:pointer;
+  }
+  .icon-btn svg{width:18px; height:18px;}
+  .sync-pill{
+    display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+    border:1px solid var(--pill-line); background:var(--pill); backdrop-filter:blur(20px);
+    font-size:10.5px; font-weight:700; color:var(--ink-soft); white-space:nowrap;
+  }
+  .sync-dot{width:7px; height:7px; border-radius:50%; background:var(--ink-faint); flex:0 0 auto; transition:background .2s;}
+  .sync-dot.ok{background:var(--accent); box-shadow:0 0 8px rgba(51,209,122,.65);}
+  .sync-dot.syncing{background:var(--warn); animation:syncPulse 1s ease-in-out infinite;}
+  .sync-dot.offline{background:var(--danger);}
+  @keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  .summary{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;
+  }
+  .stat{
+    background:var(--field); backdrop-filter:blur(20px); border:1px solid var(--glass-line-soft);
+    border-radius:16px; padding:11px 12px;
+  }
+  .stat .v{font-size:17px; font-weight:700;}
+  .stat .l{font-size:10.5px; color:var(--ink-faint); font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-top:3px;}
+  .stat.hero{background:linear-gradient(150deg,var(--steel-glass-1),var(--steel-glass-2)); border-color:rgba(51,209,122,0.28);}
+  .stat.hero .v{color:var(--accent-2);}
+
+  .filters{display:flex; gap:7px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px; scrollbar-width:none;}
+  .filters::-webkit-scrollbar{display:none;}
+  .chip{
+    flex:0 0 auto; padding:8px 14px; border-radius:999px; border:1px solid var(--pill-line);
+    background:var(--pill); backdrop-filter:blur(20px); color:var(--ink-soft); font-size:12.5px; font-weight:700; cursor:pointer;
+  }
+  .chip.on{
+    background:linear-gradient(120deg,var(--accent),var(--accent-2)); color:var(--accent-ink); border-color:transparent;
+    box-shadow:0 6px 18px rgba(51,209,122,0.35);
+  }
+
+  .list{display:flex; flex-direction:column; gap:11px; padding-bottom:120px;}
+  .empty{
+    text-align:center; padding:44px 20px; color:var(--ink-faint); font-size:13.5px;
+    background:var(--field); border:1px dashed var(--glass-line); border-radius:var(--radius);
+  }
+
+  .card{
+    position:relative; border-radius:var(--radius); overflow:hidden; cursor:pointer;
+    border:1px solid var(--glass-line); box-shadow:var(--shadow);
+    background:linear-gradient(155deg,var(--steel-glass-1),var(--steel-glass-2)), rgba(255,255,255,0.02);
+    backdrop-filter:blur(22px);
+  }
+  .card.painted{
+    background:linear-gradient(155deg,var(--painted-glass-1),var(--painted-glass-2)), rgba(255,255,255,0.02);
+    border-color:rgba(255,255,255,0.12);
+  }
+  .card.overdue{
+    border-color:rgba(224,102,92,0.55);
+    box-shadow:0 18px 40px rgba(224,102,92,0.28);
+  }
+  .card::before{
+    content:""; position:absolute; inset:0; pointer-events:none; opacity:.5;
+    background:radial-gradient(120% 90% at 100% -10%, rgba(255,255,255,0.16), transparent 55%);
+  }
+  .card .body{padding:14px 15px; position:relative;}
+  .card .row1{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .card .size{font-size:15px; font-weight:800; letter-spacing:-0.01em;}
+  .card .tpl{font-size:11.5px; color:var(--ink-faint); font-weight:600; margin-top:2px;}
+  .card .price-block{text-align:right;}
+  .card .price{font-size:16.5px; font-weight:800; white-space:nowrap; color:var(--accent-2);}
+  .card.painted .price{color:var(--ink);}
+  .card .price .cur{font-size:11px; color:var(--ink-faint); font-weight:600;}
+  .card .price-unit{font-size:10.5px; color:var(--ink-faint); font-weight:600; margin-top:2px; white-space:nowrap;}
+  .card .meta{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .tag{
+    font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;
+    background:rgba(0,0,0,0.28); color:var(--ink-soft); border:1px solid var(--glass-line-soft);
+  }
+  .tag.material-steel{color:var(--accent-2); border-color:rgba(51,209,122,0.35); background:rgba(51,209,122,0.10);}
+  .tag.material-painted{color:var(--ink); background:rgba(255,255,255,0.10); border-color:var(--glass-line);}
+  .tag.status-done{color:var(--accent-ink); background:linear-gradient(120deg,var(--accent),var(--accent-2)); border-color:transparent;}
+  .tag.status-wait{color:var(--warn); border-color:rgba(224,162,61,0.4);}
+  .tag.status-overdue{color:#fff; background:linear-gradient(120deg,var(--danger),#ff8f7c); border-color:transparent;}
+  .card .note{font-size:11.5px; color:var(--ink-faint); margin-top:8px; line-height:1.45;}
+  .card .note.comment{color:var(--ink-soft);}
+
+  .fab{
+    position:fixed; right:18px; bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:30;
+    width:58px; height:58px; border-radius:50%; border:none; cursor:pointer;
+    background:linear-gradient(150deg,var(--accent),var(--accent-deep)); color:var(--accent-ink);
+    box-shadow:0 14px 34px rgba(51,209,122,0.45), inset 0 1px 0 rgba(255,255,255,0.35);
+    display:grid; place-items:center;
+  }
+  .fab svg{width:26px; height:26px;}
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(2,4,3,0.6); backdrop-filter:blur(3px);
+    z-index:40; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:opacity .18s;
+  }
+  .overlay.open{opacity:1; pointer-events:auto;}
+  .sheet{
+    width:100%; max-height:92vh; overflow-y:auto;
+    background:linear-gradient(180deg, rgba(20,26,21,0.96), rgba(10,13,11,0.98));
+    backdrop-filter:blur(28px);
+    border-radius:26px 26px 0 0; padding:18px 16px calc(22px + env(safe-area-inset-bottom,0px));
+    transform:translateY(16px); transition:transform .18s; border-top:1px solid var(--glass-line);
+    box-shadow:0 -20px 60px rgba(0,0,0,0.5);
+  }
+  .overlay.open .sheet{transform:translateY(0);}
+  .sheet-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
+  .sheet-head h2{font-size:17px; font-weight:800;}
+  .sheet-head .close{width:32px; height:32px; border-radius:10px; border:none; background:var(--field); color:var(--ink-soft); display:grid; place-items:center; cursor:pointer;}
+
+  .field{margin-bottom:13px;}
+  .field label{display:block; font-size:11.5px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
+  .field input[type=text], .field input[type=number], .field input[type=date], .field select, .field textarea{
+    width:100%; padding:11px 12px; border-radius:13px; border:1px solid var(--field-line); background:var(--field);
+    color:var(--ink); font-size:14.5px; font-family:inherit;
+  }
+  .field input::placeholder, .field textarea::placeholder{color:var(--ink-faint);}
+  .field select{ color-scheme:dark; }
+  .field select option{ background:#12160f; color:var(--ink); }
+  .field textarea{resize:vertical; min-height:52px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .segmented{display:flex; background:var(--field); border-radius:13px; padding:3px; border:1px solid var(--field-line);}
+  .segmented button{
+    flex:1; border:none; background:transparent; padding:10px 8px; border-radius:10px; font-weight:700; font-size:13px;
+    color:var(--ink-soft); cursor:pointer;
+  }
+  .segmented button.on{background:linear-gradient(120deg,var(--accent),var(--accent-2)); color:var(--accent-ink);}
+  .segmented.material button.on.painted-on{background:linear-gradient(120deg,#3a3d42,#101113); color:#f2f2f2;}
+
+  .hint{font-size:11px; color:var(--ink-faint); margin-top:6px; line-height:1.4;}
+  .hint.formula{font-family:'JetBrains Mono',monospace; font-size:10.5px; background:rgba(0,0,0,0.3); border:1px solid var(--glass-line-soft); padding:9px 11px; border-radius:11px; margin-top:8px; color:var(--ink-soft); word-break:break-word;}
+
+  .checkrow{display:flex; align-items:center; gap:10px; padding:11px 0; border-top:1px solid var(--glass-line-soft);}
+  .checkrow:first-of-type{border-top:none;}
+  .checkrow label{flex:1; font-size:13.5px; font-weight:600;}
+  .switch{position:relative; width:42px; height:25px; flex:0 0 auto;}
+  .switch input{opacity:0; width:100%; height:100%; margin:0; position:absolute; cursor:pointer; z-index:1;}
+  .switch .track{position:absolute; inset:0; background:var(--field); border:1px solid var(--field-line); border-radius:999px; transition:.15s;}
+  .switch .thumb{position:absolute; top:3px; left:3px; width:17px; height:17px; border-radius:50%; background:#e9efe7; box-shadow:0 1px 3px rgba(0,0,0,0.4); transition:.15s;}
+  .switch input:checked + .track{background:linear-gradient(120deg,var(--accent),var(--accent-deep)); border-color:transparent;}
+  .switch input:checked + .track .thumb{transform:translateX(17px); background:#04150c;}
+
+  .price-preview{
+    background:linear-gradient(150deg, rgba(51,209,122,0.20), rgba(51,209,122,0.04));
+    border:1px solid rgba(51,209,122,0.28); border-radius:16px; padding:6px 15px; margin:15px 0;
+  }
+  .price-preview .pp-row{display:flex; justify-content:space-between; align-items:center; padding:9px 0;}
+  .price-preview .pp-row.total{border-top:1px solid rgba(51,209,122,0.25);}
+  .price-preview .l{font-size:12px; font-weight:700; color:var(--ink-soft);}
+  .price-preview .pp-row.total .l{color:var(--ink);}
+  .price-preview .v{font-size:15.5px; font-weight:800; color:var(--ink-soft);}
+  .price-preview .pp-row.total .v{font-size:22px; color:var(--accent-2);}
+
+  .btnrow{display:flex; gap:10px; margin-top:16px;}
+  .btn{flex:1; padding:13px; border-radius:14px; border:none; font-weight:800; font-size:14px; cursor:pointer;}
+  .btn.primary{background:linear-gradient(120deg,var(--accent),var(--accent-2)); color:var(--accent-ink); box-shadow:0 10px 24px rgba(51,209,122,0.3);}
+  .btn.ghost{background:var(--field); color:var(--ink-soft); border:1px solid var(--field-line);}
+  .btn.danger{background:transparent; color:var(--danger); border:1px solid rgba(224,102,92,0.45);}
+
+  .settings-note{font-size:12px; color:var(--ink-soft); line-height:1.55; margin-bottom:15px; background:var(--field); border:1px solid var(--glass-line-soft); padding:11px 13px; border-radius:13px;}
+  .toast{
+    position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%) translateY(10px);
+    background:linear-gradient(120deg,var(--accent),var(--accent-2)); color:var(--accent-ink); padding:10px 16px; border-radius:12px; font-size:12.5px; font-weight:800;
+    opacity:0; pointer-events:none; transition:.18s; z-index:50; white-space:nowrap; box-shadow:0 10px 26px rgba(51,209,122,0.4);
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <div class="mark">Т</div>
+    <div>
+      <h1>Таблички</h1>
+      <div class="sub">собівартість &amp; журнал замовлень</div>
+    </div>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <div class="sync-pill" id="syncPill" title="Статус синхронізації">
+      <span class="sync-dot" id="syncDot"></span><span id="syncLabel">…</span>
+    </div>
+    <button class="icon-btn" id="settingsBtn" aria-label="Налаштування">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="summary" id="summary"></div>
+<div class="filters" id="filters"></div>
+<div class="list" id="list"></div>
+
+<button class="fab" id="addBtn" aria-label="Додати позицію">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<div class="overlay" id="editOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 id="sheetTitle">Нова табличка</h2>
+      <button class="close" id="closeEdit">✕</button>
+    </div>
+
+    <div class="field">
+      <label for="fTpl">Макет / примітка</label>
+      <input type="text" id="fTpl" placeholder="напр. індивідуальний дизайн, номер замовлення...">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="fW">Ширина, мм</label>
+        <input type="number" id="fW" inputmode="decimal" placeholder="240">
+      </div>
+      <div class="field">
+        <label for="fH">Висота, мм</label>
+        <input type="number" id="fH" inputmode="decimal" placeholder="180">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Матеріал / покриття</label>
+      <div class="segmented material" id="materialSeg">
+        <button type="button" data-v="steel" class="on">Нержавійка</button>
+        <button type="button" data-v="painted" class="painted-on">Фарбована в чорний</button>
+      </div>
+      <div class="hint" id="materialHint"></div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="fCorners">Кути</label>
+        <select id="fCorners">
+          <option>округлі</option>
+          <option>округлі R5</option>
+          <option>гострі кути</option>
+          <option>овальна</option>
+          <option>інше</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fGrade">Марка сталі</label>
+        <input type="text" id="fGrade" placeholder="430">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="fShape">Форма / згин</label>
+      <select id="fShape">
+        <option value="">Пряма (без згину)</option>
+        <option>Гнута навпіл</option>
+        <option>Будиночком</option>
+        <option>З L-подібною ніжкою</option>
+      </select>
+      <div class="hint" id="shapeHint"></div>
+    </div>
+
+    <div class="field">
+      <label for="fHoles">Отвори</label>
+      <textarea id="fHoles" placeholder="напр. 2 отвори ⌀3 мм — по центру лівої та правої сторін"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="fQty">Кількість, шт</label>
+      <input type="number" id="fQty" inputmode="numeric" min="1" value="1">
+    </div>
+
+    <div class="field">
+      <label for="fComment">Коментар до замовлення</label>
+      <textarea id="fComment" placeholder="довільна нотатка — на всякий випадок..."></textarea>
+    </div>
+
+    <div class="checkrow">
+      <label for="fManual">Ручна ціна (не рахувати за формулою)</label>
+      <div class="switch"><input type="checkbox" id="fManual"><div class="track"><div class="thumb"></div></div></div>
+    </div>
+
+    <div class="field" id="manualPriceField" hidden>
+      <label for="fManualPrice">Ціна вручну, ₴ (за всю партію)</label>
+      <input type="number" id="fManualPrice" inputmode="decimal">
+    </div>
+
+    <div class="price-preview">
+      <div class="pp-row">
+        <div class="l">Ціна за 1 шт</div>
+        <div class="v num" id="unitPriceValue">0 ₴</div>
+      </div>
+      <div class="pp-row total">
+        <div class="l">Разом за <span id="qtyLabel">1</span> шт</div>
+        <div class="v num" id="priceValue">0 ₴</div>
+      </div>
+    </div>
+    <div class="hint formula" id="formulaHint"></div>
+
+    <div style="margin-top:14px;">
+      <div class="checkrow"><label for="fDone">Виконано</label><div class="switch"><input type="checkbox" id="fDone"><div class="track"><div class="thumb"></div></div></div></div>
+      <div class="checkrow"><label for="fReceived">Отримано</label><div class="switch"><input type="checkbox" id="fReceived"><div class="track"><div class="thumb"></div></div></div></div>
+      <div class="checkrow" style="display:block;">
+        <label for="fPayDate" style="display:block; margin-bottom:6px;">Дата оплати</label>
+        <input type="date" id="fPayDate">
+      </div>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn ghost" id="cancelEdit">Скасувати</button>
+      <button class="btn primary" id="saveEdit">Зберегти</button>
+    </div>
+    <div class="btnrow" id="deleteRow" hidden>
+      <button class="btn danger" id="deleteEdit">Видалити позицію</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="settingsOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2>Налаштування розрахунку</h2>
+      <button class="close" id="closeSettings">✕</button>
+    </div>
+    <div class="settings-note">
+      Ціна = Ширина × Висота (мм) × коеф. ваги × ціна за кг × множник (звичайна сталь / фарбована) × кількість.
+      Змінюйте ці значення, коли постачальник підвищує ціну на сталь — усі нові розрахунки одразу підуть за новими цифрами.
+    </div>
+    <div class="field">
+      <label for="sRate">Ціна за кг сталі, ₴</label>
+      <input type="number" id="sRate" inputmode="decimal">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="sMultSteel">Множник — нержавійка</label>
+        <input type="number" id="sMultSteel" inputmode="decimal" step="0.1">
+      </div>
+      <div class="field">
+        <label for="sMultPainted">Множник — фарбована</label>
+        <input type="number" id="sMultPainted" inputmode="decimal" step="0.1">
+      </div>
+    </div>
+    <div class="field">
+      <label for="sCoef">Коефіцієнт ваги (кг на мм²)</label>
+      <input type="number" id="sCoef" inputmode="decimal" step="0.0000001">
+      <div class="hint">За замовчуванням 0.0000077 — з формули постачальника. Змінюйте, лише якщо постачальник сам скаже інше число.</div>
+    </div>
+    <div class="settings-note">
+      Гнуті вироби (навпіл / будиночком / з L-ніжкою) рахуються не за введеним розміром, а за фіксованою заготовкою — постачальник завжди бере одну й ту саму площу металу на згин, незалежно від видимого розміру готового виробу.
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="sMultBent">Множник — гнуті вироби</label>
+        <input type="number" id="sMultBent" inputmode="decimal" step="0.1">
+      </div>
+      <div class="field">
+        <label for="sLeadDays">Термін виготовлення, роб. днів</label>
+        <input type="number" id="sLeadDays" inputmode="numeric" min="1">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="sBentW">Заготовка гнутих — ширина, мм</label>
+        <input type="number" id="sBentW" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="sBentH">Заготовка гнутих — висота, мм</label>
+        <input type="number" id="sBentH" inputmode="decimal">
+      </div>
+    </div>
+    <div class="btnrow">
+      <button class="btn ghost" id="resetDefaults">Скинути до типових</button>
+      <button class="btn primary" id="closeSettings2">Готово</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var LS_KEY = "tablychky-b1000-v1";
+  var API = "/api/state";
+  var DEFAULTS = { rate:160, multSteel:4.3, multPainted:5.3, coef:0.0000077, multBent:6, bentW:100, bentH:107, leadDays:2 };
+  var BENT_SHAPES = ["Гнута навпіл", "Будиночком", "З L-подібною ніжкою"];
+
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+  function load(){
+    try{
+      var raw = localStorage.getItem(LS_KEY);
+      if(!raw) return { settings:Object.assign({},DEFAULTS), settingsUpdatedAt:0, items:seed() };
+      var s = JSON.parse(raw);
+      s.settings = Object.assign({},DEFAULTS, s.settings||{});
+      s.settingsUpdatedAt = s.settingsUpdatedAt||0;
+      s.items = s.items||[];
+      return s;
+    }catch(e){ return { settings:Object.assign({},DEFAULTS), settingsUpdatedAt:0, items:seed() }; }
+  }
+  function save(){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  function seed(){
+    var t = Date.now();
+    return [
+      { id:uid(), tpl:"", w:240, h:180, material:"steel", corners:"округлі", grade:"430",
+        holes:"2 отвори ⌀3 мм — по центру зверху та знизу.", qty:1, manual:false, manualPrice:null,
+        done:true, received:true, payDate:"", createdAt:t-86400000*2, updatedAt:t-86400000*2, deleted:false },
+      { id:uid(), tpl:"", w:250, h:200, material:"painted", corners:"округлі", grade:"430",
+        holes:"4 отвори ⌀3 мм — по центру кожної сторони.", qty:1, manual:false, manualPrice:null,
+        done:true, received:false, payDate:"", createdAt:t-86400000, updatedAt:t-86400000, deleted:false },
+      { id:uid(), tpl:"індивідуальний дизайн", w:400, h:300, material:"painted", corners:"інше", grade:"",
+        holes:"переробка Віктор", qty:1, manual:false, manualPrice:null,
+        done:false, received:false, payDate:"", createdAt:t, updatedAt:t, deleted:false }
+    ];
+  }
+
+  var state = load();
+
+  function isBent(item){ return BENT_SHAPES.indexOf(item.shape)!==-1; }
+  function computeUnitPrice(item, settings){
+    if(item.manual){
+      var qty0 = Number(item.qty)||1;
+      return Math.round((Number(item.manualPrice)||0)/qty0);
+    }
+    if(isBent(item)){
+      return Math.round(settings.bentW*settings.bentH*settings.coef*settings.rate*settings.multBent);
+    }
+    var w0 = Number(item.w)||0, h0 = Number(item.h)||0;
+    var mult0 = item.material==="painted" ? settings.multPainted : settings.multSteel;
+    return Math.round(w0*h0*settings.coef*settings.rate*mult0);
+  }
+  function computePrice(item, settings){
+    if(item.manual) return Math.round(Number(item.manualPrice)||0);
+    var qty = Number(item.qty)||0;
+    if(isBent(item)){
+      var valB = settings.bentW*settings.bentH*settings.coef*settings.rate*settings.multBent*qty;
+      return Math.round(valB);
+    }
+    var w = Number(item.w)||0, h = Number(item.h)||0;
+    var mult = item.material==="painted" ? settings.multPainted : settings.multSteel;
+    var val = w*h*settings.coef*settings.rate*mult*qty;
+    return Math.round(val);
+  }
+
+  // ---------- overdue (production lead time) ----------
+  function addWorkingDays(ts, days){
+    var d = new Date(ts);
+    var added = 0;
+    while(added < days){
+      d.setDate(d.getDate()+1);
+      var day = d.getDay();
+      if(day!==0 && day!==6) added++;
+    }
+    return d.getTime();
+  }
+  function isOverdue(item){
+    if(item.done) return false;
+    return Date.now() > addWorkingDays(item.createdAt, state.settings.leadDays||DEFAULTS.leadDays);
+  }
+
+  // ---------- sync (shared between this device and others via Cloudflare KV) ----------
+  var syncDotEl = document.getElementById("syncDot"), syncLabelEl = document.getElementById("syncLabel");
+  function setSyncStatus(s){
+    if(!syncDotEl) return;
+    syncDotEl.className = "sync-dot " + s;
+    syncLabelEl.textContent = s==="ok" ? "Синхронізовано" : s==="syncing" ? "Синхронізація…" : "Офлайн";
+  }
+  function mergeItems(a, b){
+    var byId = {};
+    (a||[]).forEach(function(i){ byId[i.id]=i; });
+    (b||[]).forEach(function(i){
+      var ex = byId[i.id];
+      if(!ex || (i.updatedAt||0) >= (ex.updatedAt||0)) byId[i.id]=i;
+    });
+    return Object.keys(byId).map(function(k){ return byId[k]; });
+  }
+  function applyRemote(remote){
+    if(!remote) return;
+    state.items = mergeItems(state.items, remote.items||[]);
+    if(remote.settings && (remote.settingsUpdatedAt||0) >= (state.settingsUpdatedAt||0)){
+      state.settings = Object.assign({}, DEFAULTS, remote.settings);
+      state.settingsUpdatedAt = remote.settingsUpdatedAt||0;
+    }
+    save();
+  }
+  function syncPull(){
+    setSyncStatus("syncing");
+    fetch(API).then(function(r){ return r.json(); }).then(function(remote){
+      applyRemote(remote); render(); setSyncStatus("ok");
+    }).catch(function(){ setSyncStatus("offline"); });
+  }
+  function syncPush(){
+    setSyncStatus("syncing");
+    fetch(API, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ items: state.items, settings: state.settings, settingsUpdatedAt: state.settingsUpdatedAt||0 })
+    }).then(function(r){ return r.json(); }).then(function(remote){
+      applyRemote(remote); render(); setSyncStatus("ok");
+    }).catch(function(){ setSyncStatus("offline"); });
+  }
+  function visibleItems(){
+    return state.items.filter(function(i){ return !i.deleted; });
+  }
+
+  // ---------- rendering ----------
+  var listEl = document.getElementById("list");
+  var summaryEl = document.getElementById("summary");
+  var filtersEl = document.getElementById("filters");
+  var currentFilter = "all";
+
+  function fmt(n){ return n.toLocaleString("uk-UA"); }
+
+  function render(){
+    renderSummary();
+    renderFilters();
+    renderList();
+  }
+
+  function renderSummary(){
+    var items = visibleItems();
+    var total = items.reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
+    var unpaid = items.filter(function(i){ return !i.received; })
+                       .reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
+    summaryEl.innerHTML =
+      '<div class="stat"><div class="v num">'+items.length+'</div><div class="l">Позицій</div></div>'+
+      '<div class="stat hero"><div class="v num">'+fmt(total)+' ₴</div><div class="l">Всього</div></div>'+
+      '<div class="stat"><div class="v num">'+fmt(unpaid)+' ₴</div><div class="l">Не отримано</div></div>';
+  }
+
+  var FILTER_DEFS = [
+    { id:"all", label:"Усі" },
+    { id:"overdue", label:"Прострочені" },
+    { id:"steel", label:"Нержавійка" },
+    { id:"painted", label:"Фарбовані" },
+    { id:"wait", label:"В роботі" },
+    { id:"unpaid", label:"Не оплачено" }
+  ];
+  function renderFilters(){
+    filtersEl.innerHTML = FILTER_DEFS.map(function(f){
+      return '<button class="chip'+(currentFilter===f.id?' on':'')+'" data-f="'+f.id+'">'+f.label+'</button>';
+    }).join("");
+    Array.prototype.forEach.call(filtersEl.querySelectorAll(".chip"), function(btn){
+      btn.addEventListener("click", function(){
+        currentFilter = btn.getAttribute("data-f");
+        render();
+      });
+    });
+  }
+
+  function matchesFilter(item){
+    switch(currentFilter){
+      case "overdue": return isOverdue(item);
+      case "steel": return item.material==="steel";
+      case "painted": return item.material==="painted";
+      case "wait": return !item.done;
+      case "unpaid": return !item.received;
+      default: return true;
+    }
+  }
+
+  function statusRank(item){
+    if(!item.done) return 0;
+    if(!item.received) return 1;
+    return 2;
+  }
+  function renderList(){
+    var items = visibleItems().sort(function(a,b){
+      var r = statusRank(a)-statusRank(b);
+      if(r!==0) return r;
+      if(statusRank(a)===0) return a.createdAt-b.createdAt;
+      return b.createdAt-a.createdAt;
+    }).filter(matchesFilter);
+    if(items.length===0){
+      listEl.innerHTML = '<div class="empty">Тут ще нічого немає.<br>Натисніть «+», щоб додати першу табличку.</div>';
+      return;
+    }
+    listEl.innerHTML = items.map(cardHtml).join("");
+    Array.prototype.forEach.call(listEl.querySelectorAll(".card"), function(card){
+      card.addEventListener("click", function(){
+        openEdit(card.getAttribute("data-id"));
+      });
+    });
+  }
+
+  function cardHtml(item){
+    var price = computePrice(item, state.settings);
+    var unitPrice = computeUnitPrice(item, state.settings);
+    var qty = Number(item.qty)||0;
+    var painted = item.material==="painted";
+    var overdue = isOverdue(item);
+    var sizeLabel = isBent(item)
+      ? (item.shape + (item.w&&item.h ? " · " + item.w+"×"+item.h+" мм" : ""))
+      : ((item.w&&item.h) ? (item.w+"×"+item.h+" мм") : (item.tpl || "без розміру"));
+    var tpl = item.tpl && (item.w&&item.h) ? item.tpl : "";
+    var tags = [];
+    if(overdue) tags.push('<span class="tag status-overdue">⚠ Прострочено</span>');
+    tags.push('<span class="tag '+(painted?'material-painted':'material-steel')+'">'+(painted?'Чорна фарбована':'Нержавійка')+'</span>');
+    if(item.grade) tags.push('<span class="tag">сталь '+esc(item.grade)+'</span>');
+    tags.push('<span class="tag">'+(Number(item.qty)||0)+' шт</span>');
+    tags.push('<span class="tag '+(item.done?'status-done':'status-wait')+'">'+(item.done?'Виконано':'В роботі')+'</span>');
+    if(!item.received) tags.push('<span class="tag status-wait">Не оплачено</span>');
+    var note = item.holes ? esc(item.holes) : "";
+    var comment = item.comment ? esc(item.comment) : "";
+    return (
+      '<div class="card'+(painted?' painted':'')+(overdue?' overdue':'')+'" data-id="'+item.id+'">'+
+        '<div class="body">'+
+          '<div class="row1">'+
+            '<div><div class="size">'+esc(sizeLabel)+'</div>'+(tpl?'<div class="tpl">'+esc(tpl)+'</div>':'')+'</div>'+
+            '<div class="price-block"><div class="price num">'+fmt(price)+'<span class="cur"> ₴</span></div>'+
+            '<div class="price-unit num">'+fmt(unitPrice)+' ₴/шт'+(qty>1?' × '+qty:'')+'</div></div>'+
+          '</div>'+
+          '<div class="meta">'+tags.join("")+'</div>'+
+          (note?'<div class="note">'+note+'</div>':'')+
+          (comment?'<div class="note comment">💬 '+comment+'</div>':'')+
+        '</div>'+
+      '</div>'
+    );
+  }
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  // ---------- edit sheet ----------
+  var editOverlay = document.getElementById("editOverlay");
+  var editingId = null;
+  var fTpl=document.getElementById("fTpl"), fW=document.getElementById("fW"), fH=document.getElementById("fH"),
+      fCorners=document.getElementById("fCorners"), fGrade=document.getElementById("fGrade"), fHoles=document.getElementById("fHoles"),
+      fShape=document.getElementById("fShape"), shapeHint=document.getElementById("shapeHint"), fComment=document.getElementById("fComment"),
+      fQty=document.getElementById("fQty"), fManual=document.getElementById("fManual"), fManualPrice=document.getElementById("fManualPrice"),
+      fDone=document.getElementById("fDone"), fReceived=document.getElementById("fReceived"), fPayDate=document.getElementById("fPayDate"),
+      materialSeg=document.getElementById("materialSeg"), materialHint=document.getElementById("materialHint"),
+      manualPriceField=document.getElementById("manualPriceField"), priceValue=document.getElementById("priceValue"),
+      formulaHint=document.getElementById("formulaHint"), deleteRow=document.getElementById("deleteRow");
+  var currentMaterial = "steel";
+
+  function openEdit(id){
+    editingId = id || null;
+    var item = editingId ? state.items.find(function(i){return i.id===editingId;}) : null;
+    document.getElementById("sheetTitle").textContent = item ? "Редагувати табличку" : "Нова табличка";
+    deleteRow.hidden = !item;
+
+    fTpl.value = item ? item.tpl||"" : "";
+    fW.value = item ? item.w||"" : "";
+    fH.value = item ? item.h||"" : "";
+    currentMaterial = item ? item.material : "steel";
+    setMaterialUI(currentMaterial);
+    fCorners.value = item ? item.corners||"округлі" : "округлі";
+    fGrade.value = item ? item.grade||"" : "430";
+    fHoles.value = item ? item.holes||"" : "";
+    fShape.value = item ? item.shape||"" : "";
+    fShape.dispatchEvent(new Event("change"));
+    fComment.value = item ? item.comment||"" : "";
+    fQty.value = item ? item.qty||1 : 1;
+    fManual.checked = item ? !!item.manual : false;
+    fManualPrice.value = item && item.manualPrice!=null ? item.manualPrice : "";
+    fDone.checked = item ? !!item.done : false;
+    fReceived.checked = item ? !!item.received : false;
+    fPayDate.value = item ? item.payDate||"" : "";
+    manualPriceField.hidden = !fManual.checked;
+
+    updatePreview();
+    editOverlay.classList.add("open");
+  }
+  function closeEdit(){ editOverlay.classList.remove("open"); editingId = null; }
+
+  function setMaterialUI(m){
+    currentMaterial = m;
+    Array.prototype.forEach.call(materialSeg.querySelectorAll("button"), function(b){
+      b.classList.toggle("on", b.getAttribute("data-v")===m);
+    });
+    var mult = m==="painted" ? state.settings.multPainted : state.settings.multSteel;
+    materialHint.textContent = "Множник у формулі: ×"+mult+(m==="painted" ? " (фарбування в чорний)" : " (звичайна нержавійка)");
+  }
+  materialSeg.addEventListener("click", function(e){
+    var btn = e.target.closest("button"); if(!btn) return;
+    setMaterialUI(btn.getAttribute("data-v"));
+    updatePreview();
+  });
+  fShape.addEventListener("change", function(){
+    shapeHint.textContent = fShape.value
+      ? "Рахується за фіксованою заготовкою "+state.settings.bentW+"×"+state.settings.bentH+" мм, множник ×"+state.settings.multBent+" — незалежно від розмірів вище."
+      : "";
+    updatePreview();
+  });
+
+  fManual.addEventListener("change", function(){
+    manualPriceField.hidden = !fManual.checked;
+    updatePreview();
+  });
+  [fW,fH,fQty,fManualPrice].forEach(function(el){ el.addEventListener("input", updatePreview); });
+
+  function draftItem(){
+    return {
+      tpl:fTpl.value.trim(), w:Number(fW.value)||0, h:Number(fH.value)||0,
+      material:currentMaterial, qty:Number(fQty.value)||0, shape:fShape.value,
+      manual:fManual.checked, manualPrice:Number(fManualPrice.value)||0
+    };
+  }
+  function updatePreview(){
+    var d = draftItem();
+    var price = computePrice(d, state.settings);
+    var unitPrice = computeUnitPrice(d, state.settings);
+    priceValue.textContent = fmt(price)+" ₴";
+    document.getElementById("unitPriceValue").textContent = fmt(unitPrice)+" ₴";
+    document.getElementById("qtyLabel").textContent = d.qty||0;
+    if(d.manual){
+      formulaHint.textContent = "Ціна введена вручну — формула не застосовується.";
+    } else if(isBent(d)){
+      formulaHint.textContent = "ROUND(("+state.settings.bentW+" × "+state.settings.bentH+" × "+state.settings.coef+") × "+state.settings.rate+" × "+state.settings.multBent+" × "+(d.qty||0)+", 0)  — фіксована заготовка для «"+d.shape+"»";
+    } else {
+      var mult = d.material==="painted" ? state.settings.multPainted : state.settings.multSteel;
+      formulaHint.textContent = "ROUND(("+ (d.w||0) +" × "+ (d.h||0) +" × "+state.settings.coef+") × "+state.settings.rate+" × "+mult+" × "+(d.qty||0)+", 0)";
+    }
+  }
+
+  document.getElementById("addBtn").addEventListener("click", function(){ openEdit(null); });
+  document.getElementById("closeEdit").addEventListener("click", closeEdit);
+  document.getElementById("cancelEdit").addEventListener("click", closeEdit);
+  editOverlay.addEventListener("click", function(e){ if(e.target===editOverlay) closeEdit(); });
+
+  document.getElementById("saveEdit").addEventListener("click", function(){
+    var d = draftItem();
+    if(!d.w || !d.h){
+      if(!confirm("Розмір (ширина/висота) не вказано — зберегти без розміру?")) return;
+    }
+    var payload = {
+      tpl:d.tpl, w:d.w, h:d.h, material:d.material,
+      corners:fCorners.value, grade:fGrade.value.trim(), holes:fHoles.value.trim(),
+      shape:fShape.value, comment:fComment.value.trim(),
+      qty:d.qty||1, manual:d.manual, manualPrice:d.manual ? (Number(fManualPrice.value)||0) : null,
+      done:fDone.checked, received:fReceived.checked, payDate:fPayDate.value,
+      deleted:false, updatedAt:Date.now()
+    };
+    if(editingId){
+      var item = state.items.find(function(i){return i.id===editingId;});
+      Object.assign(item, payload);
+    } else {
+      payload.id = uid();
+      payload.createdAt = Date.now();
+      state.items.push(payload);
+    }
+    save(); closeEdit(); render(); showToast("Збережено"); syncPush();
+  });
+
+  document.getElementById("deleteEdit").addEventListener("click", function(){
+    if(!editingId) return;
+    if(!confirm("Видалити цю позицію?")) return;
+    var item = state.items.find(function(i){return i.id===editingId;});
+    if(item){ item.deleted = true; item.updatedAt = Date.now(); }
+    save(); closeEdit(); render(); showToast("Видалено"); syncPush();
+  });
+
+  // ---------- settings sheet ----------
+  var settingsOverlay = document.getElementById("settingsOverlay");
+  var sRate=document.getElementById("sRate"), sMultSteel=document.getElementById("sMultSteel"),
+      sMultPainted=document.getElementById("sMultPainted"), sCoef=document.getElementById("sCoef"),
+      sMultBent=document.getElementById("sMultBent"), sLeadDays=document.getElementById("sLeadDays"),
+      sBentW=document.getElementById("sBentW"), sBentH=document.getElementById("sBentH");
+
+  function openSettings(){
+    sRate.value = state.settings.rate;
+    sMultSteel.value = state.settings.multSteel;
+    sMultPainted.value = state.settings.multPainted;
+    sCoef.value = state.settings.coef;
+    sMultBent.value = state.settings.multBent;
+    sLeadDays.value = state.settings.leadDays;
+    sBentW.value = state.settings.bentW;
+    sBentH.value = state.settings.bentH;
+    settingsOverlay.classList.add("open");
+  }
+  function closeSettings(){
+    state.settings.rate = Number(sRate.value)||DEFAULTS.rate;
+    state.settings.multSteel = Number(sMultSteel.value)||DEFAULTS.multSteel;
+    state.settings.multPainted = Number(sMultPainted.value)||DEFAULTS.multPainted;
+    state.settings.coef = Number(sCoef.value)||DEFAULTS.coef;
+    state.settings.multBent = Number(sMultBent.value)||DEFAULTS.multBent;
+    state.settings.leadDays = Number(sLeadDays.value)||DEFAULTS.leadDays;
+    state.settings.bentW = Number(sBentW.value)||DEFAULTS.bentW;
+    state.settings.bentH = Number(sBentH.value)||DEFAULTS.bentH;
+    state.settingsUpdatedAt = Date.now();
+    save();
+    settingsOverlay.classList.remove("open");
+    render();
+    syncPush();
+  }
+  document.getElementById("settingsBtn").addEventListener("click", openSettings);
+  document.getElementById("closeSettings").addEventListener("click", closeSettings);
+  document.getElementById("closeSettings2").addEventListener("click", closeSettings);
+  settingsOverlay.addEventListener("click", function(e){ if(e.target===settingsOverlay) closeSettings(); });
+  document.getElementById("resetDefaults").addEventListener("click", function(){
+    sRate.value = DEFAULTS.rate; sMultSteel.value = DEFAULTS.multSteel;
+    sMultPainted.value = DEFAULTS.multPainted; sCoef.value = DEFAULTS.coef;
+    sMultBent.value = DEFAULTS.multBent; sLeadDays.value = DEFAULTS.leadDays;
+    sBentW.value = DEFAULTS.bentW; sBentH.value = DEFAULTS.bentH;
+  });
+
+  // ---------- toast ----------
+  var toastEl = document.getElementById("toast"), toastTimer;
+  function showToast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1600);
+  }
+
+  render();
+  syncPull();
+  setInterval(syncPull, 9000);
+})();
+</script>
+</body>
+</html>
