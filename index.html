@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Таблички B1000</title>
+<title id="pageTitle">Таблички B1000</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" href="/icon-192.png">
+<meta name="theme-color" content="#070a08">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Таблички">
 <style>
   :root{
     --bg:#070a08; --bg-2:#0b100c;
@@ -285,8 +292,10 @@
     position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%) translateY(10px);
     background:linear-gradient(120deg,var(--accent),var(--accent-2)); color:var(--accent-ink); padding:10px 16px; border-radius:12px; font-size:12.5px; font-weight:800;
     opacity:0; pointer-events:none; transition:.18s; z-index:50; white-space:nowrap; box-shadow:0 10px 26px rgba(51,209,122,0.4);
+    display:flex; align-items:center; gap:10px;
   }
-  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto;}
+  .toast button{background:rgba(0,0,0,0.22); border:none; border-radius:8px; padding:5px 10px; font-weight:800; font-size:12px; color:var(--accent-ink); cursor:pointer; font-family:inherit;}
 </style>
 </head>
 <body>
@@ -340,7 +349,8 @@
   <span class="cnt" id="selectCount">0 вибрано</span>
   <button class="btn ghost" id="selDone">Виконано</button>
   <button class="btn ghost" id="selReceived">Оплачено</button>
-  <button class="btn danger" id="selCancel">Скасувати</button>
+  <button class="btn danger" id="selDelete">Видалити</button>
+  <button class="btn ghost" id="selCancel">✕</button>
 </div>
 
 <button class="fab" id="addBtn" aria-label="Додати позицію">
@@ -709,6 +719,12 @@
     renderSummary();
     renderFilters();
     renderList();
+    updateTitleBadge();
+  }
+
+  function updateTitleBadge(){
+    var n = visibleItems().filter(function(i){ return !isArchived(i) && isOverdue(i); }).length;
+    document.title = (n>0 ? "("+n+") " : "") + "Таблички B1000";
   }
 
   function matchesSearch(item){
@@ -814,32 +830,33 @@
     return null;
   }
   function renderList(){
-    var items = baseFiltered().sort(SORTERS[sortMode]||SORTERS.default);
+    var items = baseFiltered();
     if(items.length===0){
       listEl.innerHTML = '<div class="empty">'+(currentFilter==='archive' ? 'В архіві поки порожньо.<br>Сюди потрапляють замовлення, що виконані й оплачені.' : 'Тут ще нічого немає.<br>Натисніть «+», щоб додати першу табличку.')+'</div>';
       return;
     }
+    var sorter = SORTERS[sortMode]||SORTERS.default;
     var html = "";
-    var lastGroup;
-    var groupSum = 0;
-    function flushGroup(){
-      if(lastGroup===undefined) return;
-      html = html.replace("{{GROUP_SUM}}", fmt(groupSum)+" ₴");
-    }
-    items.forEach(function(item, idx){
-      if(groupMode!=="none"){
+    if(groupMode==="none"){
+      html = items.slice().sort(sorter).map(cardHtml).join("");
+    } else {
+      // Group first by day/week (so a chosen sort never scatters one
+      // day's orders across the list and duplicates its header), then
+      // sort inside each group.
+      var byKey = {}, groups = [];
+      items.forEach(function(item){
         var gk = groupKey(item);
-        if(gk!==lastGroup){
-          flushGroup();
-          lastGroup = gk;
-          groupSum = 0;
-          html += '<div class="group-head"><span class="gt">'+esc(gk)+'</span><span class="gs">{{GROUP_SUM}}</span></div>';
-        }
-        groupSum += computePrice(item, state.settings);
-      }
-      html += cardHtml(item);
-    });
-    flushGroup();
+        if(!byKey[gk]){ byKey[gk] = { key:gk, items:[], latest:item.createdAt }; groups.push(byKey[gk]); }
+        byKey[gk].items.push(item);
+        if(item.createdAt > byKey[gk].latest) byKey[gk].latest = item.createdAt;
+      });
+      groups.sort(function(a,b){ return b.latest-a.latest; });
+      groups.forEach(function(g){
+        var sum = g.items.reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
+        html += '<div class="group-head"><span class="gt">'+esc(g.key)+'</span><span class="gs">'+fmt(sum)+' ₴</span></div>';
+        html += g.items.slice().sort(sorter).map(cardHtml).join("");
+      });
+    }
     listEl.innerHTML = html;
     Array.prototype.forEach.call(listEl.querySelectorAll(".card"), function(card){
       card.addEventListener("click", function(e){
@@ -943,11 +960,30 @@
       });
       save();
       selectMode = false; selectedIds = {}; selectBar.hidden = true;
+      document.getElementById("selectModeBtn").classList.remove("on");
       render(); showToast(ids.length+" позицій оновлено"); syncPush();
     });
   }
   document.getElementById("selDone").addEventListener("click", function(){ bulkSet("done"); });
   document.getElementById("selReceived").addEventListener("click", function(){ bulkSet("received"); });
+  document.getElementById("selDelete").addEventListener("click", function(){
+    var n = Object.keys(selectedIds).length;
+    if(!confirm("Видалити "+n+" позицій?")) return;
+    pullRemote().then(function(){
+      var ids = Object.keys(selectedIds);
+      ids.forEach(function(id){
+        var item = state.items.find(function(i){ return i.id===id; });
+        if(!item) return;
+        item.deleted = true;
+        item.updatedAt = Date.now();
+        item.updatedBy = getUserName();
+      });
+      save();
+      selectMode = false; selectedIds = {}; selectBar.hidden = true;
+      document.getElementById("selectModeBtn").classList.remove("on");
+      render(); showToast(ids.length+" позицій видалено"); syncPush();
+    });
+  });
   document.getElementById("selCancel").addEventListener("click", function(){
     selectMode = false; selectedIds = {}; selectBar.hidden = true;
     document.getElementById("selectModeBtn").classList.remove("on");
@@ -1139,12 +1175,25 @@
     else applyAndSave();
   });
 
+  var deleteUndoTimer = null;
   document.getElementById("deleteEdit").addEventListener("click", function(){
     if(!editingId) return;
     if(!confirm("Видалити цю позицію?")) return;
     var item = state.items.find(function(i){return i.id===editingId;});
-    if(item){ item.deleted = true; item.updatedAt = Date.now(); item.updatedBy = getUserName(); }
-    save(); closeEdit(); render(); showToast("Видалено"); syncPush();
+    if(!item) return;
+    item.deleted = true;
+    item.updatedAt = Date.now();
+    item.updatedBy = getUserName();
+    save(); closeEdit(); render();
+    clearTimeout(deleteUndoTimer);
+    deleteUndoTimer = setTimeout(function(){ syncPush(); }, 4000);
+    showToast("Видалено", { actionLabel:"Скасувати", duration:4000, onAction:function(){
+      clearTimeout(deleteUndoTimer);
+      item.deleted = false;
+      item.updatedAt = Date.now();
+      item.updatedBy = getUserName();
+      save(); render(); syncPush();
+    }});
   });
 
   document.getElementById("duplicateEdit").addEventListener("click", function(){
@@ -1223,11 +1272,20 @@
 
   // ---------- toast ----------
   var toastEl = document.getElementById("toast"), toastTimer;
-  function showToast(msg){
-    toastEl.textContent = msg;
+  function showToast(msg, opts){
+    opts = opts || {};
+    toastEl.innerHTML = esc(msg) + (opts.actionLabel ? ' <button type="button" id="toastAction">'+esc(opts.actionLabel)+'</button>' : '');
     toastEl.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1600);
+    var dur = opts.duration || 1600;
+    toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, dur);
+    if(opts.actionLabel){
+      document.getElementById("toastAction").addEventListener("click", function(){
+        clearTimeout(toastTimer);
+        toastEl.classList.remove("show");
+        if(opts.onAction) opts.onAction();
+      });
+    }
   }
 
   document.addEventListener("visibilitychange", function(){
