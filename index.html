@@ -113,7 +113,7 @@
     background:linear-gradient(155deg,var(--painted-glass-1),var(--painted-glass-2)), rgba(255,255,255,0.02);
     border-color:rgba(255,255,255,0.12);
   }
-  .card.overdue{
+  .card.overdue, .card.rework{
     border-color:rgba(224,102,92,0.55);
     box-shadow:0 18px 40px rgba(224,102,92,0.28);
   }
@@ -135,6 +135,7 @@
     font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px;
     background:rgba(0,0,0,0.28); color:var(--ink-soft); border:1px solid var(--glass-line-soft);
   }
+  .tagbtn{font-family:inherit; cursor:pointer; line-height:1.2;}
   .tag.material-steel{color:var(--accent-2); border-color:rgba(51,209,122,0.35); background:rgba(51,209,122,0.10);}
   .tag.material-painted{color:var(--ink); background:rgba(255,255,255,0.10); border-color:var(--glass-line);}
   .tag.status-done{color:var(--accent-ink); background:linear-gradient(120deg,var(--accent),var(--accent-2)); border-color:transparent;}
@@ -347,6 +348,11 @@
     </div>
 
     <div class="checkrow">
+      <label for="fRework">Переробка (ціна 0, червона позначка)</label>
+      <div class="switch"><input type="checkbox" id="fRework"><div class="track"><div class="thumb"></div></div></div>
+    </div>
+
+    <div class="checkrow">
       <label for="fManual">Ручна ціна (не рахувати за формулою)</label>
       <div class="switch"><input type="checkbox" id="fManual"><div class="track"><div class="thumb"></div></div></div>
     </div>
@@ -417,7 +423,7 @@
       <div class="hint">За замовчуванням 0.0000077 — з формули постачальника. Змінюйте, лише якщо постачальник сам скаже інше число.</div>
     </div>
     <div class="settings-note">
-      Гнуті вироби (навпіл / будиночком / з L-ніжкою) рахуються не за введеним розміром, а за фіксованою заготовкою — постачальник завжди бере одну й ту саму площу металу на згин, незалежно від видимого розміру готового виробу.
+      Гнуті вироби (навпіл / будиночком / з L-ніжкою) рахуються за тією ж формулою й розміром, але з іншим множником.
     </div>
     <div class="row2">
       <div class="field">
@@ -427,16 +433,6 @@
       <div class="field">
         <label for="sLeadDays">Термін виготовлення, роб. днів</label>
         <input type="number" id="sLeadDays" inputmode="numeric" min="1">
-      </div>
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label for="sBentW">Заготовка гнутих — ширина, мм</label>
-        <input type="number" id="sBentW" inputmode="decimal">
-      </div>
-      <div class="field">
-        <label for="sBentH">Заготовка гнутих — висота, мм</label>
-        <input type="number" id="sBentH" inputmode="decimal">
       </div>
     </div>
     <div class="btnrow">
@@ -453,7 +449,7 @@
   "use strict";
   var LS_KEY = "tablychky-b1000-v1";
   var API = "/api/state";
-  var DEFAULTS = { rate:160, multSteel:4.3, multPainted:5.3, coef:0.0000077, multBent:6, bentW:100, bentH:107, leadDays:2 };
+  var DEFAULTS = { rate:160, multSteel:4.3, multPainted:5.3, coef:0.0000077, multBent:6, leadDays:2 };
   var BENT_SHAPES = ["Гнута навпіл", "Будиночком", "З L-подібною ніжкою"];
 
   function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -496,8 +492,9 @@
       var qty0 = Number(item.qty)||1;
       return Math.round((Number(item.manualPrice)||0)/qty0);
     }
+    if(item.rework) return 0;
     if(isBent(item)){
-      return Math.round(settings.bentW*settings.bentH*settings.coef*settings.rate*settings.multBent);
+      return Math.round((Number(item.w)||0)*(Number(item.h)||0)*settings.coef*settings.rate*settings.multBent);
     }
     var w0 = Number(item.w)||0, h0 = Number(item.h)||0;
     var mult0 = item.material==="painted" ? settings.multPainted : settings.multSteel;
@@ -505,9 +502,10 @@
   }
   function computePrice(item, settings){
     if(item.manual) return Math.round(Number(item.manualPrice)||0);
+    if(item.rework) return 0;
     var qty = Number(item.qty)||0;
     if(isBent(item)){
-      var valB = settings.bentW*settings.bentH*settings.coef*settings.rate*settings.multBent*qty;
+      var valB = (Number(item.w)||0)*(Number(item.h)||0)*settings.coef*settings.rate*settings.multBent*qty;
       return Math.round(valB);
     }
     var w = Number(item.w)||0, h = Number(item.h)||0;
@@ -591,7 +589,7 @@
   }
 
   function renderSummary(){
-    var items = visibleItems();
+    var items = visibleItems().filter(function(i){ return !isArchived(i); });
     var total = items.reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
     var unpaid = items.filter(function(i){ return !i.received; })
                        .reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
@@ -607,11 +605,13 @@
     { id:"steel", label:"Нержавійка" },
     { id:"painted", label:"Фарбовані" },
     { id:"wait", label:"В роботі" },
-    { id:"unpaid", label:"Не оплачено" }
+    { id:"unpaid", label:"Не оплачено" },
+    { id:"archive", label:"Архів" }
   ];
   function renderFilters(){
     filtersEl.innerHTML = FILTER_DEFS.map(function(f){
-      return '<button class="chip'+(currentFilter===f.id?' on':'')+'" data-f="'+f.id+'">'+f.label+'</button>';
+      var label = f.id==="archive" ? f.label+" ("+visibleItems().filter(isArchived).length+")" : f.label;
+      return '<button class="chip'+(currentFilter===f.id?' on':'')+'" data-f="'+f.id+'">'+label+'</button>';
     }).join("");
     Array.prototype.forEach.call(filtersEl.querySelectorAll(".chip"), function(btn){
       btn.addEventListener("click", function(){
@@ -623,6 +623,7 @@
 
   function matchesFilter(item){
     switch(currentFilter){
+      case "archive": return true;
       case "overdue": return isOverdue(item);
       case "steel": return item.material==="steel";
       case "painted": return item.material==="painted";
@@ -632,25 +633,36 @@
     }
   }
 
+  function isArchived(item){ return !!item.done && !!item.received; }
+  function toggleStatus(id, field){
+    var item = state.items.find(function(i){return i.id===id;});
+    if(!item) return;
+    item[field] = !item[field];
+    item.updatedAt = Date.now();
+    save(); render(); syncPush();
+    if(isArchived(item)) showToast("Виконано й оплачено — в архів");
+  }
   function statusRank(item){
     if(!item.done) return 0;
     if(!item.received) return 1;
     return 2;
   }
   function renderList(){
-    var items = visibleItems().sort(function(a,b){
+    var items = visibleItems().filter(function(i){ return currentFilter==='archive' ? isArchived(i) : !isArchived(i); }).sort(function(a,b){
       var r = statusRank(a)-statusRank(b);
       if(r!==0) return r;
       if(statusRank(a)===0) return a.createdAt-b.createdAt;
       return b.createdAt-a.createdAt;
     }).filter(matchesFilter);
     if(items.length===0){
-      listEl.innerHTML = '<div class="empty">Тут ще нічого немає.<br>Натисніть «+», щоб додати першу табличку.</div>';
+      listEl.innerHTML = '<div class="empty">'+(currentFilter==='archive' ? 'В архіві поки порожньо.<br>Сюди потрапляють замовлення, що виконані й оплачені.' : 'Тут ще нічого немає.<br>Натисніть «+», щоб додати першу табличку.')+'</div>';
       return;
     }
     listEl.innerHTML = items.map(cardHtml).join("");
     Array.prototype.forEach.call(listEl.querySelectorAll(".card"), function(card){
-      card.addEventListener("click", function(){
+      card.addEventListener("click", function(e){
+        var tg = e.target.closest("[data-tg]");
+        if(tg){ toggleStatus(card.getAttribute("data-id"), tg.getAttribute("data-tg")); return; }
         openEdit(card.getAttribute("data-id"));
       });
     });
@@ -667,17 +679,18 @@
       : ((item.w&&item.h) ? (item.w+"×"+item.h+" мм") : (item.tpl || "без розміру"));
     var tpl = item.tpl && (item.w&&item.h) ? item.tpl : "";
     var tags = [];
+    if(item.rework) tags.push('<span class="tag status-overdue">↺ Переробка</span>');
     if(overdue) tags.push('<span class="tag status-overdue">⚠ Прострочено</span>');
     tags.push('<span class="tag '+(painted?'material-painted':'material-steel')+'">'+(painted?'Чорна фарбована':'Нержавійка')+'</span>');
     if(item.grade) tags.push('<span class="tag">сталь '+esc(item.grade)+'</span>');
     tags.push('<span class="tag">'+(Number(item.qty)||0)+' шт</span>');
-    tags.push('<span class="tag '+(item.done?'status-done':'status-wait')+'">'+(item.done?'Виконано':'В роботі')+'</span>');
-    if(!item.received) tags.push('<span class="tag status-wait">Не оплачено</span>');
+    tags.push('<button type="button" data-tg="done" class="tag tagbtn '+(item.done?'status-done':'status-wait')+'">'+(item.done?'Виконано':'В роботі')+'</button>');
+    tags.push('<button type="button" data-tg="received" class="tag tagbtn '+(item.received?'status-done':'status-wait')+'">'+(item.received?'Оплачено':'Не оплачено')+'</button>');
     if(item.files && item.files.length) tags.push('<span class="tag">📎 '+item.files.length+'</span>');
     var note = item.holes ? esc(item.holes) : "";
     var comment = item.comment ? esc(item.comment) : "";
     return (
-      '<div class="card'+(painted?' painted':'')+(overdue?' overdue':'')+'" data-id="'+item.id+'">'+
+      '<div class="card'+(painted?' painted':'')+(overdue?' overdue':'')+(item.rework?' rework':'')+'" data-id="'+item.id+'">'+
         '<div class="body">'+
           '<div class="row1">'+
             '<div><div class="size">'+esc(sizeLabel)+'</div>'+(tpl?'<div class="tpl">'+esc(tpl)+'</div>':'')+'</div>'+
@@ -703,7 +716,7 @@
   var editingId = null;
   var fTpl=document.getElementById("fTpl"), fW=document.getElementById("fW"), fH=document.getElementById("fH"),
       fCorners=document.getElementById("fCorners"), fGrade=document.getElementById("fGrade"), fHoles=document.getElementById("fHoles"),
-      fShape=document.getElementById("fShape"), shapeHint=document.getElementById("shapeHint"), fComment=document.getElementById("fComment"),
+      fShape=document.getElementById("fShape"), fRework=document.getElementById("fRework"), shapeHint=document.getElementById("shapeHint"), fComment=document.getElementById("fComment"),
       fQty=document.getElementById("fQty"), fManual=document.getElementById("fManual"), fManualPrice=document.getElementById("fManualPrice"),
       fDone=document.getElementById("fDone"), fReceived=document.getElementById("fReceived"), fPayDate=document.getElementById("fPayDate"),
       materialSeg=document.getElementById("materialSeg"), materialHint=document.getElementById("materialHint"),
@@ -728,6 +741,7 @@
     fShape.value = item ? item.shape||"" : "";
     fShape.dispatchEvent(new Event("change"));
     fComment.value = item ? item.comment||"" : "";
+    fRework.checked = item ? !!item.rework : false;
     draftFiles = item && item.files ? item.files.slice() : [];
     renderFiles();
     fQty.value = item ? item.qty||1 : 1;
@@ -758,11 +772,12 @@
   });
   fShape.addEventListener("change", function(){
     shapeHint.textContent = fShape.value
-      ? "Рахується за фіксованою заготовкою "+state.settings.bentW+"×"+state.settings.bentH+" мм, множник ×"+state.settings.multBent+" — незалежно від розмірів вище."
+      ? "Та сама формула за розміром вище (вводьте розмір розгортки), але множник ×"+state.settings.multBent+" замість ×"+state.settings.multSteel+"."
       : "";
     updatePreview();
   });
 
+  fRework.addEventListener("change", updatePreview);
   fManual.addEventListener("change", function(){
     manualPriceField.hidden = !fManual.checked;
     updatePreview();
@@ -772,7 +787,7 @@
   function draftItem(){
     return {
       tpl:fTpl.value.trim(), w:Number(fW.value)||0, h:Number(fH.value)||0,
-      material:currentMaterial, qty:Number(fQty.value)||0, shape:fShape.value,
+      material:currentMaterial, qty:Number(fQty.value)||0, shape:fShape.value, rework:fRework.checked,
       manual:fManual.checked, manualPrice:Number(fManualPrice.value)||0
     };
   }
@@ -785,8 +800,10 @@
     document.getElementById("qtyLabel").textContent = d.qty||0;
     if(d.manual){
       formulaHint.textContent = "Ціна введена вручну — формула не застосовується.";
+    } else if(d.rework){
+      formulaHint.textContent = "Переробка — ціна 0. Якщо треба вказати суму, увімкніть «Ручна ціна».";
     } else if(isBent(d)){
-      formulaHint.textContent = "ROUND(("+state.settings.bentW+" × "+state.settings.bentH+" × "+state.settings.coef+") × "+state.settings.rate+" × "+state.settings.multBent+" × "+(d.qty||0)+", 0)  — фіксована заготовка для «"+d.shape+"»";
+      formulaHint.textContent = "ROUND(("+(d.w||0)+" × "+(d.h||0)+" × "+state.settings.coef+") × "+state.settings.rate+" × "+state.settings.multBent+" × "+(d.qty||0)+", 0)  — множник для «"+d.shape+"»";
     } else {
       var mult = d.material==="painted" ? state.settings.multPainted : state.settings.multSteel;
       formulaHint.textContent = "ROUND(("+ (d.w||0) +" × "+ (d.h||0) +" × "+state.settings.coef+") × "+state.settings.rate+" × "+mult+" × "+(d.qty||0)+", 0)";
@@ -840,7 +857,7 @@
     var payload = {
       tpl:d.tpl, w:d.w, h:d.h, material:d.material,
       corners:fCorners.value, grade:fGrade.value.trim(), holes:fHoles.value.trim(),
-      shape:fShape.value, comment:fComment.value.trim(), files:draftFiles.slice(),
+      shape:fShape.value, rework:fRework.checked, comment:fComment.value.trim(), files:draftFiles.slice(),
       qty:d.qty||1, manual:d.manual, manualPrice:d.manual ? (Number(fManualPrice.value)||0) : null,
       done:fDone.checked, received:fReceived.checked, payDate:fPayDate.value,
       deleted:false, updatedAt:Date.now()
@@ -868,8 +885,7 @@
   var settingsOverlay = document.getElementById("settingsOverlay");
   var sRate=document.getElementById("sRate"), sMultSteel=document.getElementById("sMultSteel"),
       sMultPainted=document.getElementById("sMultPainted"), sCoef=document.getElementById("sCoef"),
-      sMultBent=document.getElementById("sMultBent"), sLeadDays=document.getElementById("sLeadDays"),
-      sBentW=document.getElementById("sBentW"), sBentH=document.getElementById("sBentH");
+      sMultBent=document.getElementById("sMultBent"), sLeadDays=document.getElementById("sLeadDays");
 
   function openSettings(){
     sRate.value = state.settings.rate;
@@ -878,8 +894,6 @@
     sCoef.value = state.settings.coef;
     sMultBent.value = state.settings.multBent;
     sLeadDays.value = state.settings.leadDays;
-    sBentW.value = state.settings.bentW;
-    sBentH.value = state.settings.bentH;
     settingsOverlay.classList.add("open");
   }
   function closeSettings(){
@@ -889,8 +903,6 @@
     state.settings.coef = Number(sCoef.value)||DEFAULTS.coef;
     state.settings.multBent = Number(sMultBent.value)||DEFAULTS.multBent;
     state.settings.leadDays = Number(sLeadDays.value)||DEFAULTS.leadDays;
-    state.settings.bentW = Number(sBentW.value)||DEFAULTS.bentW;
-    state.settings.bentH = Number(sBentH.value)||DEFAULTS.bentH;
     state.settingsUpdatedAt = Date.now();
     save();
     settingsOverlay.classList.remove("open");
@@ -905,7 +917,6 @@
     sRate.value = DEFAULTS.rate; sMultSteel.value = DEFAULTS.multSteel;
     sMultPainted.value = DEFAULTS.multPainted; sCoef.value = DEFAULTS.coef;
     sMultBent.value = DEFAULTS.multBent; sLeadDays.value = DEFAULTS.leadDays;
-    sBentW.value = DEFAULTS.bentW; sBentH.value = DEFAULTS.bentH;
   });
 
   // ---------- toast ----------
