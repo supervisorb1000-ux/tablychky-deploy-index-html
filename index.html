@@ -491,14 +491,7 @@
     if(item.manual) return Math.round(Number(item.manualPrice)||0);
     if(item.rework) return 0;
     var qty = Number(item.qty)||0;
-    if(isBent(item)){
-      var valB = (Number(item.w)||0)*(Number(item.h)||0)*settings.coef*settings.rate*settings.multBent*qty;
-      return Math.round(valB);
-    }
-    var w = Number(item.w)||0, h = Number(item.h)||0;
-    var mult = item.material==="painted" ? settings.multPainted : settings.multSteel;
-    var val = w*h*settings.coef*settings.rate*mult*qty;
-    return Math.round(val);
+    return computeUnitPrice(item, settings) * qty;
   }
 
   // ---------- overdue (production lead time) ----------
@@ -542,11 +535,14 @@
     }
     save();
   }
-  function syncPull(){
+  function pullRemote(){
     setSyncStatus("syncing");
-    fetch(API).then(function(r){ return r.json(); }).then(function(remote){
-      applyRemote(remote); render(); setSyncStatus("ok");
+    return fetch(API).then(function(r){ return r.json(); }).then(function(remote){
+      applyRemote(remote); setSyncStatus("ok");
     }).catch(function(){ setSyncStatus("offline"); });
+  }
+  function syncPull(){
+    pullRemote().then(render);
   }
   function syncPush(){
     setSyncStatus("syncing");
@@ -622,12 +618,14 @@
 
   function isArchived(item){ return !!item.done && !!item.received; }
   function toggleStatus(id, field){
-    var item = state.items.find(function(i){return i.id===id;});
-    if(!item) return;
-    item[field] = !item[field];
-    item.updatedAt = Date.now();
-    save(); render(); syncPush();
-    if(isArchived(item)) showToast("Виконано й оплачено — в архів");
+    pullRemote().then(function(){
+      var item = state.items.find(function(i){return i.id===id;});
+      if(!item) return;
+      item[field] = !item[field];
+      item.updatedAt = Date.now();
+      save(); render(); syncPush();
+      if(isArchived(item)) showToast("Виконано й оплачено — в архів");
+    });
   }
   function statusRank(item){
     if(!item.done) return 0;
@@ -849,15 +847,20 @@
       done:fDone.checked, received:fReceived.checked, payDate:fPayDate.value,
       deleted:false, updatedAt:Date.now()
     };
-    if(editingId){
-      var item = state.items.find(function(i){return i.id===editingId;});
-      Object.assign(item, payload);
-    } else {
-      payload.id = uid();
-      payload.createdAt = Date.now();
-      state.items.push(payload);
-    }
-    save(); closeEdit(); render(); showToast("Збережено"); syncPush();
+    var applyAndSave = function(){
+      if(editingId){
+        var item = state.items.find(function(i){return i.id===editingId;});
+        if(item) Object.assign(item, payload);
+        else { payload.id = editingId; payload.createdAt = Date.now(); state.items.push(payload); }
+      } else {
+        payload.id = uid();
+        payload.createdAt = Date.now();
+        state.items.push(payload);
+      }
+      save(); closeEdit(); render(); showToast("Збережено"); syncPush();
+    };
+    if(editingId) pullRemote().then(applyAndSave);
+    else applyAndSave();
   });
 
   document.getElementById("deleteEdit").addEventListener("click", function(){
