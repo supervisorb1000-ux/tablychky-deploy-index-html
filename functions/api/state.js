@@ -23,7 +23,11 @@ function mergeItems(current, incoming) {
   (current || []).forEach(function (i) { byId[i.id] = i; });
   (incoming || []).forEach(function (i) {
     var ex = byId[i.id];
-    if (!ex || (i.updatedAt || 0) >= (ex.updatedAt || 0)) byId[i.id] = i;
+    if (!ex) { byId[i.id] = i; return; }
+    var iu = i.updatedAt || 0, eu = ex.updatedAt || 0;
+    // On an exact tie, a deletion always wins over a live copy — keeps a
+    // deleted item from quietly resurfacing when two devices push at once.
+    if (iu > eu || (iu === eu && i.deleted && !ex.deleted)) byId[i.id] = i;
   });
   return Object.keys(byId).map(function (k) { return byId[k]; });
 }

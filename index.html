@@ -634,7 +634,12 @@
     (a||[]).forEach(function(i){ byId[i.id]=i; });
     (b||[]).forEach(function(i){
       var ex = byId[i.id];
-      if(!ex || (i.updatedAt||0) >= (ex.updatedAt||0)) byId[i.id]=i;
+      if(!ex) { byId[i.id]=i; return; }
+      var iu = i.updatedAt||0, eu = ex.updatedAt||0;
+      // On an exact tie, a deletion always wins over a live copy — this is
+      // what keeps an item deleted instead of it quietly resurfacing when
+      // two devices push around the same moment.
+      if(iu>eu || (iu===eu && i.deleted && !ex.deleted)) byId[i.id]=i;
     });
     return Object.keys(byId).map(function(k){ return byId[k]; });
   }
