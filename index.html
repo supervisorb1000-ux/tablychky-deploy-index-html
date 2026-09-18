@@ -63,6 +63,7 @@
     color:var(--ink-soft); cursor:pointer;
   }
   .icon-btn svg{width:18px; height:18px;}
+  .icon-btn.on{background:linear-gradient(120deg,var(--accent),var(--accent-2)); border-color:transparent; color:var(--accent-ink);}
   .sync-pill{
     display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
     border:1px solid var(--pill-line); background:var(--pill); backdrop-filter:blur(20px);
@@ -85,6 +86,20 @@
   .stat .l{font-size:10.5px; color:var(--ink-faint); font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-top:3px;}
   .stat.hero{background:linear-gradient(150deg,var(--steel-glass-1),var(--steel-glass-2)); border-color:rgba(51,209,122,0.28);}
   .stat.hero .v{color:var(--accent-2);}
+
+  .toolbar{display:flex; gap:8px; margin-bottom:12px;}
+  .search-field{
+    flex:1; display:flex; align-items:center; gap:8px; padding:9px 13px; border-radius:13px;
+    border:1px solid var(--field-line); background:var(--field);
+  }
+  .search-field svg{width:15px; height:15px; color:var(--ink-faint); flex:0 0 auto;}
+  .search-field input{flex:1; border:none; background:none; color:var(--ink); font-size:13.5px; font-family:inherit; outline:none;}
+  .search-field input::placeholder{color:var(--ink-faint);}
+  .sort-select{
+    border-radius:13px; border:1px solid var(--field-line); background:var(--field); color:var(--ink-soft);
+    font-size:12px; font-weight:700; padding:0 10px; font-family:inherit; color-scheme:dark;
+  }
+  .sort-select option{background:#12160f; color:var(--ink);}
 
   .filters{display:flex; gap:7px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px; scrollbar-width:none;}
   .filters::-webkit-scrollbar{display:none;}
@@ -143,6 +158,34 @@
   .tag.status-overdue{color:#fff; background:linear-gradient(120deg,var(--danger),#ff8f7c); border-color:transparent;}
   .card .note{font-size:11.5px; color:var(--ink-faint); margin-top:8px; line-height:1.45;}
   .card .note.comment{color:var(--ink-soft);}
+  .card .dates{font-size:10px; color:var(--ink-faint); margin-top:8px;}
+
+  .group-head{display:flex; justify-content:space-between; align-items:baseline; padding:6px 2px 2px; font-weight:800;}
+  .group-head .gt{font-size:12.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em;}
+  .group-head .gs{font-size:12.5px; color:var(--accent-2);}
+
+  .selectbar{
+    position:fixed; left:16px; right:16px; bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:31;
+    display:flex; gap:8px; padding:10px; border-radius:18px; background:rgba(12,16,13,0.96);
+    border:1px solid var(--glass-line); box-shadow:var(--shadow); backdrop-filter:blur(20px);
+  }
+  .selectbar .cnt{font-size:12px; font-weight:700; color:var(--ink-soft); align-self:center; padding-left:4px; white-space:nowrap;}
+  .card.selectable{cursor:pointer;}
+  .card .selchk{
+    position:absolute; top:10px; left:10px; width:22px; height:22px; border-radius:7px; z-index:2;
+    border:2px solid var(--glass-line); background:rgba(0,0,0,0.35); display:grid; place-items:center; color:transparent;
+  }
+  .card.checked .selchk{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  .card.checked{outline:2px solid var(--accent);}
+
+  @media print{
+    header.top, .toolbar, .filters, .summary, .fab, .selectbar, #printBtn{display:none!important;}
+    .list{padding-bottom:0;}
+    body{background:#fff; color:#000;}
+    .card{break-inside:avoid; box-shadow:none; border:1px solid #999; background:#fff!important; -webkit-print-color-adjust:exact;}
+    .card .price, .card.painted .price{color:#000!important;}
+    .tag{background:#eee!important; color:#000!important; border-color:#ccc!important;}
+  }
 
   .fab{
     position:fixed; right:18px; bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:30;
@@ -250,6 +293,12 @@
     <div class="sync-pill" id="syncPill" title="Статус синхронізації">
       <span class="sync-dot" id="syncDot"></span><span id="syncLabel">…</span>
     </div>
+    <button class="icon-btn" id="printBtn" aria-label="Друк">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    </button>
+    <button class="icon-btn" id="selectModeBtn" aria-label="Вибрати кілька">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    </button>
     <button class="icon-btn" id="settingsBtn" aria-label="Налаштування">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
@@ -257,8 +306,32 @@
 </header>
 
 <div class="summary" id="summary"></div>
+<div class="toolbar">
+  <div class="search-field">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    <input type="text" id="searchInput" placeholder="Пошук за назвою, коментарем, отворами...">
+  </div>
+  <select class="sort-select" id="sortSelect">
+    <option value="default">За статусом</option>
+    <option value="dateDesc">Спочатку нові</option>
+    <option value="dateAsc">Спочатку старі</option>
+    <option value="priceDesc">Дорожчі спочатку</option>
+    <option value="priceAsc">Дешевші спочатку</option>
+  </select>
+  <select class="sort-select" id="groupSelect">
+    <option value="none">Без групування</option>
+    <option value="day">За днями</option>
+    <option value="week">За тижнями</option>
+  </select>
+</div>
 <div class="filters" id="filters"></div>
 <div class="list" id="list"></div>
+<div class="selectbar" id="selectBar" hidden>
+  <span class="cnt" id="selectCount">0 вибрано</span>
+  <button class="btn ghost" id="selDone">Виконано</button>
+  <button class="btn ghost" id="selReceived">Оплачено</button>
+  <button class="btn danger" id="selCancel">Скасувати</button>
+</div>
 
 <button class="fab" id="addBtn" aria-label="Додати позицію">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -270,6 +343,7 @@
       <h2 id="sheetTitle">Нова табличка</h2>
       <button class="close" id="closeEdit">✕</button>
     </div>
+    <div class="hint" id="metaHint" hidden style="margin-bottom:13px;"></div>
 
     <div class="field">
       <label for="fTpl">Макет / примітка</label>
@@ -387,6 +461,9 @@
       <button class="btn ghost" id="cancelEdit">Скасувати</button>
       <button class="btn primary" id="saveEdit">Зберегти</button>
     </div>
+    <div class="btnrow" id="duplicateRow" hidden>
+      <button class="btn ghost" id="duplicateEdit">⧉ Дублювати позицію</button>
+    </div>
     <div class="btnrow" id="deleteRow" hidden>
       <button class="btn danger" id="deleteEdit">Видалити позицію</button>
     </div>
@@ -398,6 +475,10 @@
     <div class="sheet-head">
       <h2>Налаштування розрахунку</h2>
       <button class="close" id="closeSettings">✕</button>
+    </div>
+    <div class="field">
+      <label for="sUserName">Ваше ім'я (щоб бачити, хто що змінював)</label>
+      <input type="text" id="sUserName" placeholder="напр. Оля">
     </div>
     <div class="settings-note">
       Ціна = Ширина × Висота (мм) × коеф. ваги × ціна за кг × множник (звичайна сталь / фарбована) × кількість.
@@ -437,6 +518,9 @@
     </div>
     <div class="btnrow">
       <button class="btn ghost" id="resetDefaults">Скинути до типових</button>
+    </div>
+    <div class="btnrow">
+      <button class="btn ghost" id="cancelSettings">Скасувати</button>
       <button class="btn primary" id="closeSettings2">Готово</button>
     </div>
     <div class="btnrow">
@@ -452,6 +536,7 @@
   "use strict";
   var LS_KEY = "tablychky-b1000-v1";
   var TOKEN_KEY = "tablychky-token";
+  var USERNAME_KEY = "tablychky-username";
   var API = "/api/state";
   var DEFAULTS = { rate:160, multSteel:4.3, multPainted:5.3, coef:0.0000077, multBent:6, leadDays:2 };
   var BENT_SHAPES = ["Гнута навпіл", "Будиночком", "З L-подібною ніжкою"];
@@ -533,7 +618,8 @@
   }
   function isOverdue(item){
     if(item.done) return false;
-    return Date.now() > addWorkingDays(item.createdAt, state.settings.leadDays||DEFAULTS.leadDays);
+    var days = item.leadDays!=null ? item.leadDays : (state.settings.leadDays||DEFAULTS.leadDays);
+    return Date.now() > addWorkingDays(item.createdAt, days);
   }
 
   // ---------- sync (shared between this device and others via Cloudflare KV) ----------
@@ -591,8 +677,18 @@
   var summaryEl = document.getElementById("summary");
   var filtersEl = document.getElementById("filters");
   var currentFilter = "all";
+  var searchQuery = "";
+  var sortMode = "default";
+  var groupMode = "none";
+  var selectMode = false;
+  var selectedIds = {};
 
   function fmt(n){ return n.toLocaleString("uk-UA"); }
+  function fmtDate(ts){
+    if(!ts) return "";
+    var d = new Date(ts);
+    return d.toLocaleDateString("uk-UA")+" "+d.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"});
+  }
 
   function render(){
     renderSummary();
@@ -600,14 +696,32 @@
     renderList();
   }
 
+  function matchesSearch(item){
+    if(!searchQuery) return true;
+    var hay = [item.tpl, item.comment, item.holes, item.grade, item.corners]
+      .filter(Boolean).join(" ").toLowerCase();
+    return hay.indexOf(searchQuery)!==-1;
+  }
+
+  // Items after filter chip + search, before sorting/grouping — this is
+  // also what the summary totals are computed from, so the numbers on top
+  // always match what's actually shown in the list below.
+  function baseFiltered(){
+    return visibleItems()
+      .filter(function(i){ return currentFilter==='archive' ? isArchived(i) : !isArchived(i); })
+      .filter(matchesFilter)
+      .filter(matchesSearch);
+  }
+
   function renderSummary(){
-    var items = visibleItems().filter(function(i){ return !isArchived(i); });
+    var items = baseFiltered();
     var total = items.reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
     var unpaid = items.filter(function(i){ return !i.received; })
                        .reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
+    var label = currentFilter==="all" ? "Всього" : "Всього (за фільтром)";
     summaryEl.innerHTML =
       '<div class="stat"><div class="v num">'+items.length+'</div><div class="l">Позицій</div></div>'+
-      '<div class="stat hero"><div class="v num">'+fmt(total)+' ₴</div><div class="l">Всього</div></div>'+
+      '<div class="stat hero"><div class="v num">'+fmt(total)+' ₴</div><div class="l">'+label+'</div></div>'+
       '<div class="stat"><div class="v num">'+fmt(unpaid)+' ₴</div><div class="l">Не отримано</div></div>';
   }
 
@@ -652,6 +766,7 @@
       if(!item) return;
       item[field] = !item[field];
       item.updatedAt = Date.now();
+      item.updatedBy = getUserName();
       save(); render(); syncPush();
       if(isArchived(item)) showToast("Виконано й оплачено — в архів");
     });
@@ -661,23 +776,63 @@
     if(!item.received) return 1;
     return 2;
   }
-  function renderList(){
-    var items = visibleItems().filter(function(i){ return currentFilter==='archive' ? isArchived(i) : !isArchived(i); }).sort(function(a,b){
+  var SORTERS = {
+    "default": function(a,b){
       var r = statusRank(a)-statusRank(b);
       if(r!==0) return r;
       if(statusRank(a)===0) return a.createdAt-b.createdAt;
       return b.createdAt-a.createdAt;
-    }).filter(matchesFilter);
+    },
+    "dateDesc": function(a,b){ return b.createdAt-a.createdAt; },
+    "dateAsc": function(a,b){ return a.createdAt-b.createdAt; },
+    "priceDesc": function(a,b){ return computePrice(b,state.settings)-computePrice(a,state.settings); },
+    "priceAsc": function(a,b){ return computePrice(a,state.settings)-computePrice(b,state.settings); }
+  };
+  function groupKey(item){
+    var d = new Date(item.createdAt);
+    if(groupMode==="day") return d.toLocaleDateString("uk-UA",{day:"2-digit",month:"long",year:"numeric"});
+    if(groupMode==="week"){
+      var jan1 = new Date(d.getFullYear(),0,1);
+      var week = Math.ceil((((d-jan1)/86400000)+jan1.getDay()+1)/7);
+      return week+"-й тиждень, "+d.getFullYear();
+    }
+    return null;
+  }
+  function renderList(){
+    var items = baseFiltered().sort(SORTERS[sortMode]||SORTERS.default);
     if(items.length===0){
       listEl.innerHTML = '<div class="empty">'+(currentFilter==='archive' ? 'В архіві поки порожньо.<br>Сюди потрапляють замовлення, що виконані й оплачені.' : 'Тут ще нічого немає.<br>Натисніть «+», щоб додати першу табличку.')+'</div>';
       return;
     }
-    listEl.innerHTML = items.map(cardHtml).join("");
+    var html = "";
+    var lastGroup;
+    var groupSum = 0;
+    function flushGroup(){
+      if(lastGroup===undefined) return;
+      html = html.replace("{{GROUP_SUM}}", fmt(groupSum)+" ₴");
+    }
+    items.forEach(function(item, idx){
+      if(groupMode!=="none"){
+        var gk = groupKey(item);
+        if(gk!==lastGroup){
+          flushGroup();
+          lastGroup = gk;
+          groupSum = 0;
+          html += '<div class="group-head"><span class="gt">'+esc(gk)+'</span><span class="gs">{{GROUP_SUM}}</span></div>';
+        }
+        groupSum += computePrice(item, state.settings);
+      }
+      html += cardHtml(item);
+    });
+    flushGroup();
+    listEl.innerHTML = html;
     Array.prototype.forEach.call(listEl.querySelectorAll(".card"), function(card){
       card.addEventListener("click", function(e){
+        var id = card.getAttribute("data-id");
+        if(selectMode){ toggleSelect(id, card); return; }
         var tg = e.target.closest("[data-tg]");
-        if(tg){ toggleStatus(card.getAttribute("data-id"), tg.getAttribute("data-tg")); return; }
-        openEdit(card.getAttribute("data-id"));
+        if(tg){ toggleStatus(id, tg.getAttribute("data-tg")); return; }
+        openEdit(id);
       });
     });
   }
@@ -703,8 +858,11 @@
     if(item.files && item.files.length) tags.push('<span class="tag">📎 '+item.files.length+'</span>');
     var note = item.holes ? esc(item.holes) : "";
     var comment = item.comment ? esc(item.comment) : "";
+    var dates = 'Створено '+fmtDate(item.createdAt)+(item.updatedAt && item.updatedAt!==item.createdAt ? ' · змінено '+fmtDate(item.updatedAt) : '')+(item.updatedBy ? ' · '+esc(item.updatedBy) : '');
+    var checked = selectMode && selectedIds[item.id];
     return (
-      '<div class="card'+(painted?' painted':'')+(overdue?' overdue':'')+(item.rework?' rework':'')+'" data-id="'+item.id+'">'+
+      '<div class="card'+(painted?' painted':'')+(overdue?' overdue':'')+(item.rework?' rework':'')+(selectMode?' selectable':'')+(checked?' checked':'')+'" data-id="'+item.id+'">'+
+        (selectMode ? '<div class="selchk">✓</div>' : '')+
         '<div class="body">'+
           '<div class="row1">'+
             '<div><div class="size">'+esc(sizeLabel)+'</div>'+(tpl?'<div class="tpl">'+esc(tpl)+'</div>':'')+'</div>'+
@@ -714,6 +872,7 @@
           '<div class="meta">'+tags.join("")+'</div>'+
           (note?'<div class="note">'+note+'</div>':'')+
           (comment?'<div class="note comment">💬 '+comment+'</div>':'')+
+          '<div class="dates">'+dates+'</div>'+
         '</div>'+
       '</div>'
     );
@@ -723,6 +882,65 @@
     return String(s).replace(/[&<>"']/g, function(c){
       return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
     });
+  }
+
+  // ---------- toolbar: search / sort / group ----------
+  document.getElementById("searchInput").addEventListener("input", function(e){
+    searchQuery = e.target.value.trim().toLowerCase();
+    render();
+  });
+  document.getElementById("sortSelect").addEventListener("change", function(e){
+    sortMode = e.target.value;
+    renderList();
+  });
+  document.getElementById("groupSelect").addEventListener("change", function(e){
+    groupMode = e.target.value;
+    renderList();
+  });
+  document.getElementById("printBtn").addEventListener("click", function(){ window.print(); });
+
+  // ---------- select multiple ----------
+  var selectBar = document.getElementById("selectBar"), selectCount = document.getElementById("selectCount");
+  function toggleSelect(id, cardEl){
+    if(selectedIds[id]) delete selectedIds[id];
+    else selectedIds[id] = true;
+    var n = Object.keys(selectedIds).length;
+    cardEl.classList.toggle("checked", !!selectedIds[id]);
+    selectCount.textContent = n+" вибрано";
+    selectBar.hidden = n===0;
+  }
+  document.getElementById("selectModeBtn").addEventListener("click", function(){
+    selectMode = !selectMode;
+    selectedIds = {};
+    selectBar.hidden = true;
+    this.classList.toggle("on", selectMode);
+    renderList();
+  });
+  function bulkSet(field){
+    pullRemote().then(function(){
+      var ids = Object.keys(selectedIds);
+      ids.forEach(function(id){
+        var item = state.items.find(function(i){ return i.id===id; });
+        if(!item) return;
+        item[field] = true;
+        item.updatedAt = Date.now();
+        item.updatedBy = getUserName();
+      });
+      save();
+      selectMode = false; selectedIds = {}; selectBar.hidden = true;
+      render(); showToast(ids.length+" позицій оновлено"); syncPush();
+    });
+  }
+  document.getElementById("selDone").addEventListener("click", function(){ bulkSet("done"); });
+  document.getElementById("selReceived").addEventListener("click", function(){ bulkSet("received"); });
+  document.getElementById("selCancel").addEventListener("click", function(){
+    selectMode = false; selectedIds = {}; selectBar.hidden = true;
+    document.getElementById("selectModeBtn").classList.remove("on");
+    renderList();
+  });
+
+  function getUserName(){
+    return localStorage.getItem(USERNAME_KEY) || "";
   }
 
   // ---------- edit sheet ----------
@@ -735,7 +953,8 @@
       fDone=document.getElementById("fDone"), fReceived=document.getElementById("fReceived"), fPayDate=document.getElementById("fPayDate"),
       materialSeg=document.getElementById("materialSeg"), materialHint=document.getElementById("materialHint"),
       manualPriceField=document.getElementById("manualPriceField"), priceValue=document.getElementById("priceValue"),
-      formulaHint=document.getElementById("formulaHint"), deleteRow=document.getElementById("deleteRow");
+      formulaHint=document.getElementById("formulaHint"), deleteRow=document.getElementById("deleteRow"),
+      duplicateRow=document.getElementById("duplicateRow"), metaHint=document.getElementById("metaHint");
   var currentMaterial = "steel";
 
   function openEdit(id){
@@ -743,6 +962,14 @@
     var item = editingId ? state.items.find(function(i){return i.id===editingId;}) : null;
     document.getElementById("sheetTitle").textContent = item ? "Редагувати табличку" : "Нова табличка";
     deleteRow.hidden = !item;
+    duplicateRow.hidden = !item;
+    if(item){
+      metaHint.hidden = false;
+      metaHint.textContent = "Створено "+fmtDate(item.createdAt)+(item.createdBy?" ("+item.createdBy+")":"")+
+        (item.updatedAt && item.updatedAt!==item.createdAt ? " · остання зміна "+fmtDate(item.updatedAt)+(item.updatedBy?" ("+item.updatedBy+")":"") : "");
+    } else {
+      metaHint.hidden = true;
+    }
 
     fTpl.value = item ? item.tpl||"" : "";
     fW.value = item ? item.w||"" : "";
@@ -801,7 +1028,7 @@
   function draftItem(){
     return {
       tpl:fTpl.value.trim(), w:Number(fW.value)||0, h:Number(fH.value)||0,
-      material:currentMaterial, qty:Number(fQty.value)||0, shape:fShape.value, rework:fRework.checked,
+      material:currentMaterial, qty:Math.max(1, Number(fQty.value)||0), shape:fShape.value, rework:fRework.checked,
       manual:fManual.checked, manualPrice:Number(fManualPrice.value)||0
     };
   }
@@ -868,22 +1095,27 @@
     if(!d.w || !d.h){
       if(!confirm("Розмір (ширина/висота) не вказано — зберегти без розміру?")) return;
     }
+    if(d.manual && (Number(fManualPrice.value)||0)<=0){
+      if(!confirm("Ручна ціна не вказана (0 ₴) — зберегти так?")) return;
+    }
     var payload = {
       tpl:d.tpl, w:d.w, h:d.h, material:d.material,
       corners:fCorners.value, grade:fGrade.value.trim(), holes:fHoles.value.trim(),
       shape:fShape.value, rework:fRework.checked, comment:fComment.value.trim(), files:draftFiles.slice(),
       qty:d.qty||1, manual:d.manual, manualPrice:d.manual ? (Number(fManualPrice.value)||0) : null,
       done:fDone.checked, received:fReceived.checked, payDate:fPayDate.value,
-      deleted:false, updatedAt:Date.now()
+      deleted:false, updatedAt:Date.now(), updatedBy:getUserName()
     };
     var applyAndSave = function(){
       if(editingId){
         var item = state.items.find(function(i){return i.id===editingId;});
         if(item) Object.assign(item, payload);
-        else { payload.id = editingId; payload.createdAt = Date.now(); state.items.push(payload); }
+        else { payload.id = editingId; payload.createdAt = Date.now(); payload.createdBy = getUserName(); payload.leadDays = state.settings.leadDays; state.items.push(payload); }
       } else {
         payload.id = uid();
         payload.createdAt = Date.now();
+        payload.createdBy = getUserName();
+        payload.leadDays = state.settings.leadDays;
         state.items.push(payload);
       }
       save(); closeEdit(); render(); showToast("Збережено"); syncPush();
@@ -896,15 +1128,30 @@
     if(!editingId) return;
     if(!confirm("Видалити цю позицію?")) return;
     var item = state.items.find(function(i){return i.id===editingId;});
-    if(item){ item.deleted = true; item.updatedAt = Date.now(); }
+    if(item){ item.deleted = true; item.updatedAt = Date.now(); item.updatedBy = getUserName(); }
     save(); closeEdit(); render(); showToast("Видалено"); syncPush();
+  });
+
+  document.getElementById("duplicateEdit").addEventListener("click", function(){
+    if(!editingId) return;
+    var src = state.items.find(function(i){return i.id===editingId;});
+    if(!src) return;
+    var copy = Object.assign({}, src, {
+      id: uid(), createdAt: Date.now(), createdBy: getUserName(),
+      updatedAt: Date.now(), updatedBy: getUserName(),
+      leadDays: state.settings.leadDays,
+      done:false, received:false, payDate:"", deleted:false
+    });
+    state.items.push(copy);
+    save(); closeEdit(); render(); showToast("Позицію продубльовано"); syncPush();
   });
 
   // ---------- settings sheet ----------
   var settingsOverlay = document.getElementById("settingsOverlay");
   var sRate=document.getElementById("sRate"), sMultSteel=document.getElementById("sMultSteel"),
       sMultPainted=document.getElementById("sMultPainted"), sCoef=document.getElementById("sCoef"),
-      sMultBent=document.getElementById("sMultBent"), sLeadDays=document.getElementById("sLeadDays");
+      sMultBent=document.getElementById("sMultBent"), sLeadDays=document.getElementById("sLeadDays"),
+      sUserName=document.getElementById("sUserName");
 
   function openSettings(){
     sRate.value = state.settings.rate;
@@ -913,9 +1160,16 @@
     sCoef.value = state.settings.coef;
     sMultBent.value = state.settings.multBent;
     sLeadDays.value = state.settings.leadDays;
+    sUserName.value = getUserName();
     settingsOverlay.classList.add("open");
   }
-  function closeSettings(){
+  function dismissSettings(){
+    settingsOverlay.classList.remove("open");
+  }
+  function applySettings(){
+    var name = sUserName.value.trim();
+    if(name) localStorage.setItem(USERNAME_KEY, name);
+    else localStorage.removeItem(USERNAME_KEY);
     var next = {
       rate: Number(sRate.value)||DEFAULTS.rate,
       multSteel: Number(sMultSteel.value)||DEFAULTS.multSteel,
@@ -934,9 +1188,10 @@
     syncPush();
   }
   document.getElementById("settingsBtn").addEventListener("click", openSettings);
-  document.getElementById("closeSettings").addEventListener("click", closeSettings);
-  document.getElementById("closeSettings2").addEventListener("click", closeSettings);
-  settingsOverlay.addEventListener("click", function(e){ if(e.target===settingsOverlay) closeSettings(); });
+  document.getElementById("closeSettings").addEventListener("click", dismissSettings);
+  document.getElementById("cancelSettings").addEventListener("click", dismissSettings);
+  document.getElementById("closeSettings2").addEventListener("click", applySettings);
+  settingsOverlay.addEventListener("click", function(e){ if(e.target===settingsOverlay) dismissSettings(); });
   document.getElementById("resetDefaults").addEventListener("click", function(){
     sRate.value = DEFAULTS.rate; sMultSteel.value = DEFAULTS.multSteel;
     sMultPainted.value = DEFAULTS.multPainted; sCoef.value = DEFAULTS.coef;

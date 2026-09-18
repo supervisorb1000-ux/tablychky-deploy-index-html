@@ -4,6 +4,7 @@ const MAX_FILE = 5 * 1024 * 1024;
 const MAX_STATE = 2 * 1024 * 1024;
 const FILE_ID = /^[a-z0-9]{6,40}$/i;
 const TOMBSTONE_MS = 90 * 24 * 60 * 60 * 1000;
+const BACKUP_TTL = 14 * 24 * 60 * 60;
 
 function json(data, status) {
   return new Response(JSON.stringify(data), {
@@ -46,6 +47,16 @@ async function sweepTombstones(items, env) {
   return kept;
 }
 
+// Keeps one snapshot of the state as it was at the start of each day, for
+// up to 14 days, so data can be recovered from the Cloudflare KV dashboard
+// if it ever gets corrupted or wiped.
+async function dailySnapshot(current, env) {
+  if (!current || !current.items || !current.items.length) return;
+  var key = "backup:" + new Date().toISOString().slice(0, 10);
+  var exists = await env.STATE.get(key);
+  if (!exists) await env.STATE.put(key, JSON.stringify(current), { expirationTtl: BACKUP_TTL });
+}
+
 export async function onRequestGet({ request, env }) {
   if (!checkAuth(request, env)) return json({ error: "unauthorized" }, 401);
   var fileId = new URL(request.url).searchParams.get("file");
@@ -77,6 +88,8 @@ export async function onRequestPost({ request, env }) {
   var incoming = JSON.parse(rawBody);
   var raw = await env.STATE.get(KV_KEY);
   var current = raw ? JSON.parse(raw) : EMPTY;
+
+  await dailySnapshot(current, env);
 
   var mergedItems = mergeItems(current.items, incoming.items);
   mergedItems = await sweepTombstones(mergedItems, env);
