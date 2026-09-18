@@ -439,6 +439,9 @@
       <button class="btn ghost" id="resetDefaults">Скинути до типових</button>
       <button class="btn primary" id="closeSettings2">Готово</button>
     </div>
+    <div class="btnrow">
+      <button class="btn ghost" id="exportData">⬇ Експортувати всі дані (резервна копія)</button>
+    </div>
   </div>
 </div>
 
@@ -448,11 +451,34 @@
 (function(){
   "use strict";
   var LS_KEY = "tablychky-b1000-v1";
+  var TOKEN_KEY = "tablychky-token";
   var API = "/api/state";
   var DEFAULTS = { rate:160, multSteel:4.3, multPainted:5.3, coef:0.0000077, multBent:6, leadDays:2 };
   var BENT_SHAPES = ["Гнута навпіл", "Будиночком", "З L-подібною ніжкою"];
 
   function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+  // Adds the access token (if the deployment requires one) and re-prompts
+  // once on 401 instead of silently failing as "offline".
+  function authHeaders(){
+    var t = localStorage.getItem(TOKEN_KEY);
+    return t ? { "X-App-Token": t } : {};
+  }
+  function apiFetch(url, opts){
+    opts = opts || {};
+    opts.headers = Object.assign({}, opts.headers||{}, authHeaders());
+    return fetch(url, opts).then(function(r){
+      if(r.status===401){
+        var t = window.prompt("Потрібен код доступу до застосунку:");
+        if(t){
+          localStorage.setItem(TOKEN_KEY, t);
+          var retryOpts = Object.assign({}, opts, { headers: Object.assign({}, opts.headers, authHeaders()) });
+          return fetch(url, retryOpts);
+        }
+      }
+      return r;
+    });
+  }
 
   function load(){
     try{
@@ -535,23 +561,26 @@
     }
     save();
   }
+  var pendingPush = false;
   function pullRemote(){
     setSyncStatus("syncing");
-    return fetch(API).then(function(r){ return r.json(); }).then(function(remote){
+    return apiFetch(API).then(function(r){ return r.json(); }).then(function(remote){
       applyRemote(remote); setSyncStatus("ok");
     }).catch(function(){ setSyncStatus("offline"); });
   }
   function syncPull(){
     pullRemote().then(render);
+    if(pendingPush) syncPush();
   }
   function syncPush(){
     setSyncStatus("syncing");
-    fetch(API, {
+    apiFetch(API, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ items: state.items, settings: state.settings, settingsUpdatedAt: state.settingsUpdatedAt||0 })
     }).then(function(r){ return r.json(); }).then(function(remote){
+      pendingPush = false;
       applyRemote(remote); render(); setSyncStatus("ok");
-    }).catch(function(){ setSyncStatus("offline"); });
+    }).catch(function(){ pendingPush = true; setSyncStatus("offline"); });
   }
   function visibleItems(){
     return state.items.filter(function(i){ return !i.deleted; });
@@ -811,7 +840,7 @@
     if(rm){ draftFiles.splice(Number(rm.getAttribute("data-rm")),1); renderFiles(); }
   });
   function downloadFile(f){
-    fetch(API+"?file="+encodeURIComponent(f.id)).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){
+    apiFetch(API+"?file="+encodeURIComponent(f.id)).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){
       var a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = f.name;
       document.body.appendChild(a); a.click();
       setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
@@ -821,7 +850,7 @@
     Array.prototype.forEach.call(fFile.files, function(file){
       if(file.size > 5*1024*1024){ showToast("«"+file.name+"» більше 5 МБ"); return; }
       var id = uid();
-      fetch(API+"?file="+id, { method:"POST", body:file }).then(function(r){
+      apiFetch(API+"?file="+id, { method:"POST", body:file }).then(function(r){
         if(!r.ok) throw 0;
         draftFiles.push({ id:id, name:file.name, size:file.size }); renderFiles(); showToast("Файл додано");
       }).catch(function(){ showToast("Не вдалося надіслати файл (офлайн?)"); });
@@ -887,15 +916,20 @@
     settingsOverlay.classList.add("open");
   }
   function closeSettings(){
-    state.settings.rate = Number(sRate.value)||DEFAULTS.rate;
-    state.settings.multSteel = Number(sMultSteel.value)||DEFAULTS.multSteel;
-    state.settings.multPainted = Number(sMultPainted.value)||DEFAULTS.multPainted;
-    state.settings.coef = Number(sCoef.value)||DEFAULTS.coef;
-    state.settings.multBent = Number(sMultBent.value)||DEFAULTS.multBent;
-    state.settings.leadDays = Number(sLeadDays.value)||DEFAULTS.leadDays;
+    var next = {
+      rate: Number(sRate.value)||DEFAULTS.rate,
+      multSteel: Number(sMultSteel.value)||DEFAULTS.multSteel,
+      multPainted: Number(sMultPainted.value)||DEFAULTS.multPainted,
+      coef: Number(sCoef.value)||DEFAULTS.coef,
+      multBent: Number(sMultBent.value)||DEFAULTS.multBent,
+      leadDays: Number(sLeadDays.value)||DEFAULTS.leadDays
+    };
+    var changed = Object.keys(next).some(function(k){ return next[k]!==state.settings[k]; });
+    settingsOverlay.classList.remove("open");
+    if(!changed) return;
+    state.settings = next;
     state.settingsUpdatedAt = Date.now();
     save();
-    settingsOverlay.classList.remove("open");
     render();
     syncPush();
   }
@@ -908,6 +942,14 @@
     sMultPainted.value = DEFAULTS.multPainted; sCoef.value = DEFAULTS.coef;
     sMultBent.value = DEFAULTS.multBent; sLeadDays.value = DEFAULTS.leadDays;
   });
+  document.getElementById("exportData").addEventListener("click", function(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type:"application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "tablychky-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
 
   // ---------- toast ----------
   var toastEl = document.getElementById("toast"), toastTimer;
@@ -917,6 +959,10 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function(){ toastEl.classList.remove("show"); }, 1600);
   }
+
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState==="visible") syncPull();
+  });
 
   render();
   syncPull();
