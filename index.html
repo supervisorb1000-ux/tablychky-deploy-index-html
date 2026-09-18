@@ -220,6 +220,12 @@
   .btn.ghost{background:var(--field); color:var(--ink-soft); border:1px solid var(--field-line);}
   .btn.danger{background:transparent; color:var(--danger); border:1px solid rgba(224,102,92,0.45);}
 
+  .filelist{display:flex; flex-direction:column; gap:6px; margin-bottom:8px;}
+  .fileitem{display:flex; align-items:center; gap:8px; background:var(--field); border:1px solid var(--field-line); border-radius:12px; padding:6px 8px 6px 12px;}
+  .fileitem .filename{flex:1; min-width:0; text-align:left; background:none; border:none; color:var(--accent-2); font-size:13px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; padding:6px 0;}
+  .fileitem .filesize{font-size:11px; color:var(--ink-faint); white-space:nowrap;}
+  .fileitem .filedel{width:28px; height:28px; border-radius:8px; border:none; background:transparent; color:var(--ink-soft); cursor:pointer;}
+  .filebtn{display:block; text-align:center; cursor:pointer;}
   .settings-note{font-size:12px; color:var(--ink-soft); line-height:1.55; margin-bottom:15px; background:var(--field); border:1px solid var(--glass-line-soft); padding:11px 13px; border-radius:13px;}
   .toast{
     position:fixed; left:50%; bottom:calc(90px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%) translateY(10px);
@@ -330,6 +336,14 @@
     <div class="field">
       <label for="fComment">Коментар до замовлення</label>
       <textarea id="fComment" placeholder="довільна нотатка — на всякий випадок..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Файли (DXF та інші)</label>
+      <div id="fileList" class="filelist"></div>
+      <label class="btn ghost filebtn" for="fFile">＋ Додати файл</label>
+      <input type="file" id="fFile" accept=".dxf,.dwg,.pdf,.png,.jpg,.jpeg" multiple hidden>
+      <div class="hint">До 5 МБ на файл. Файли бачать усі, хто користується застосунком.</div>
     </div>
 
     <div class="checkrow">
@@ -659,6 +673,7 @@
     tags.push('<span class="tag">'+(Number(item.qty)||0)+' шт</span>');
     tags.push('<span class="tag '+(item.done?'status-done':'status-wait')+'">'+(item.done?'Виконано':'В роботі')+'</span>');
     if(!item.received) tags.push('<span class="tag status-wait">Не оплачено</span>');
+    if(item.files && item.files.length) tags.push('<span class="tag">📎 '+item.files.length+'</span>');
     var note = item.holes ? esc(item.holes) : "";
     var comment = item.comment ? esc(item.comment) : "";
     return (
@@ -713,6 +728,8 @@
     fShape.value = item ? item.shape||"" : "";
     fShape.dispatchEvent(new Event("change"));
     fComment.value = item ? item.comment||"" : "";
+    draftFiles = item && item.files ? item.files.slice() : [];
+    renderFiles();
     fQty.value = item ? item.qty||1 : 1;
     fManual.checked = item ? !!item.manual : false;
     fManualPrice.value = item && item.manualPrice!=null ? item.manualPrice : "";
@@ -776,6 +793,40 @@
     }
   }
 
+  var draftFiles = [];
+  var fFile = document.getElementById("fFile"), fileListEl = document.getElementById("fileList");
+  function fmtSize(n){ return n<1024 ? n+" Б" : n<1048576 ? Math.round(n/1024)+" КБ" : (n/1048576).toFixed(1)+" МБ"; }
+  function renderFiles(){
+    fileListEl.innerHTML = draftFiles.map(function(f,i){
+      return '<div class="fileitem"><button type="button" class="filename" data-dl="'+i+'">📎 '+esc(f.name)+'</button>'+
+        '<span class="filesize">'+fmtSize(f.size)+'</span>'+
+        '<button type="button" class="filedel" data-rm="'+i+'" aria-label="Прибрати">✕</button></div>';
+    }).join("");
+  }
+  fileListEl.addEventListener("click", function(e){
+    var dl = e.target.closest("[data-dl]"), rm = e.target.closest("[data-rm]");
+    if(dl) downloadFile(draftFiles[Number(dl.getAttribute("data-dl"))]);
+    if(rm){ draftFiles.splice(Number(rm.getAttribute("data-rm")),1); renderFiles(); }
+  });
+  function downloadFile(f){
+    fetch(API+"?file="+encodeURIComponent(f.id)).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){
+      var a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = f.name;
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }).catch(function(){ showToast("Не вдалося завантажити файл"); });
+  }
+  fFile.addEventListener("change", function(){
+    Array.prototype.forEach.call(fFile.files, function(file){
+      if(file.size > 5*1024*1024){ showToast("«"+file.name+"» більше 5 МБ"); return; }
+      var id = uid();
+      fetch(API+"?file="+id, { method:"POST", body:file }).then(function(r){
+        if(!r.ok) throw 0;
+        draftFiles.push({ id:id, name:file.name, size:file.size }); renderFiles(); showToast("Файл додано");
+      }).catch(function(){ showToast("Не вдалося надіслати файл (офлайн?)"); });
+    });
+    fFile.value = "";
+  });
+
   document.getElementById("addBtn").addEventListener("click", function(){ openEdit(null); });
   document.getElementById("closeEdit").addEventListener("click", closeEdit);
   document.getElementById("cancelEdit").addEventListener("click", closeEdit);
@@ -789,7 +840,7 @@
     var payload = {
       tpl:d.tpl, w:d.w, h:d.h, material:d.material,
       corners:fCorners.value, grade:fGrade.value.trim(), holes:fHoles.value.trim(),
-      shape:fShape.value, comment:fComment.value.trim(),
+      shape:fShape.value, comment:fComment.value.trim(), files:draftFiles.slice(),
       qty:d.qty||1, manual:d.manual, manualPrice:d.manual ? (Number(fManualPrice.value)||0) : null,
       done:fDone.checked, received:fReceived.checked, payDate:fPayDate.value,
       deleted:false, updatedAt:Date.now()
