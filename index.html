@@ -179,12 +179,22 @@
   .card.checked{outline:2px solid var(--accent);}
 
   @media print{
-    header.top, .toolbar, .filters, .summary, .fab, .selectbar, #printBtn{display:none!important;}
-    .list{padding-bottom:0;}
-    body{background:#fff; color:#000;}
-    .card{break-inside:avoid; box-shadow:none; border:1px solid #999; background:#fff!important; -webkit-print-color-adjust:exact;}
-    .card .price, .card.painted .price{color:#000!important;}
-    .tag{background:#eee!important; color:#000!important; border-color:#ccc!important;}
+    header.top, .toolbar, .filters, .summary, .fab, .selectbar, #printBtn, .group-head .gs{display:none!important;}
+    .list{padding-bottom:0; gap:14px;}
+    html, body{background:#fff!important;}
+    .card{
+      break-inside:avoid; box-shadow:none; border:1.5px solid #000; border-radius:10px;
+      background:#fff!important; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    .card::before{display:none!important;}
+    .card, .card *{color:#000!important; text-shadow:none!important;}
+    .card .size{font-size:19px;}
+    .card .price{font-size:20px;}
+    .card .tpl, .card .price-unit, .card .note, .card .dates{color:#333!important;}
+    .tag{background:#fff!important; border:1.3px solid #000!important; padding:5px 11px;}
+    .tag.tagbtn{border-style:dashed;}
+    .group-head{border-bottom:2px solid #000; margin-top:10px;}
+    .group-head .gt{color:#000!important; font-size:15px;}
   }
 
   .fab{
