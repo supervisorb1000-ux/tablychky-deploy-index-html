@@ -119,6 +119,8 @@
     background:linear-gradient(120deg,var(--accent),var(--accent-2)); color:var(--accent-ink); border-color:transparent;
     box-shadow:0 6px 18px rgba(51,209,122,0.35);
   }
+  .chip.chip-warn{color:var(--danger); border-color:rgba(224,102,92,0.5);}
+  .chip.chip-warn.on{background:linear-gradient(120deg,var(--danger),#ff8f7c); color:#fff;}
 
   .list{display:flex; flex-direction:column; gap:11px; padding-bottom:120px;}
   .empty{
@@ -768,9 +770,12 @@
     { id:"archive", label:"Архів" }
   ];
   function renderFilters(){
+    var overdueCount = visibleItems().filter(function(i){ return !isArchived(i) && isOverdue(i); }).length;
     filtersEl.innerHTML = FILTER_DEFS.map(function(f){
-      var label = f.id==="archive" ? f.label+" ("+visibleItems().filter(isArchived).length+")" : f.label;
-      return '<button class="chip'+(currentFilter===f.id?' on':'')+'" data-f="'+f.id+'">'+label+'</button>';
+      var label = f.label;
+      if(f.id==="archive") label += " ("+visibleItems().filter(isArchived).length+")";
+      if(f.id==="overdue" && overdueCount>0) label += " ("+overdueCount+")";
+      return '<button class="chip'+(currentFilter===f.id?' on':'')+(f.id==="overdue"&&overdueCount>0?' chip-warn':'')+'" data-f="'+f.id+'">'+label+'</button>';
     }).join("");
     Array.prototype.forEach.call(filtersEl.querySelectorAll(".chip"), function(btn){
       btn.addEventListener("click", function(){
