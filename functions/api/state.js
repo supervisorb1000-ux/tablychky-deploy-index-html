@@ -5,6 +5,7 @@ const MAX_STATE = 2 * 1024 * 1024;
 const FILE_ID = /^[a-z0-9]{6,40}$/i;
 const TOMBSTONE_MS = 90 * 24 * 60 * 60 * 1000;
 const BACKUP_TTL = 14 * 24 * 60 * 60;
+const DEFAULT_LEAD_DAYS = 2;
 
 function json(data, status) {
   return new Response(JSON.stringify(data), {
@@ -67,6 +68,57 @@ async function dailySnapshot(current, env) {
   if (!exists) await env.STATE.put(key, JSON.stringify(current), { expirationTtl: BACKUP_TTL });
 }
 
+// ---------- Telegram notifications for the supplier ----------
+// Mirrors the client's overdue math (functions/api/state.js has no access
+// to index.html's copy) so "overdue" means the same thing on both sides.
+function addWorkingDays(ts, days) {
+  var d = new Date(ts);
+  var added = 0;
+  while (added < days) {
+    d.setDate(d.getDate() + 1);
+    var day = d.getDay();
+    if (day !== 0 && day !== 6) added++;
+  }
+  return d.getTime();
+}
+function isOverdue(item, settings) {
+  if (item.done || item.deleted) return false;
+  var days = item.leadDays != null ? item.leadDays : ((settings && settings.leadDays) || DEFAULT_LEAD_DAYS);
+  return Date.now() > addWorkingDays(item.createdAt, days);
+}
+function describeItem(item) {
+  var size = (item.w && item.h) ? (item.w + "×" + item.h + " мм") : (item.tpl || "без розміру");
+  var material = item.material === "painted" ? "чорна фарбована" : "нержавійка";
+  return size + ", " + material + ", " + (item.qty || 1) + " шт" + (item.comment ? " — " + item.comment : "");
+}
+async function notifyTelegram(env, text) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
+  try {
+    await fetch("https://api.telegram.org/bot" + env.TELEGRAM_BOT_TOKEN + "/sendMessage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: text })
+    });
+  } catch (e) {
+    // Best-effort — a failed notification should never break saving data.
+  }
+}
+// Lazily checked on every GET (i.e. whenever anyone opens the app), since
+// there's no scheduled/cron function here: flips overdueNotifiedAt once per
+// item so the same order never pings twice.
+async function checkOverdueAndNotify(state, env) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return false;
+  var messages = [];
+  (state.items || []).forEach(function (i) {
+    if (!i.deleted && !i.overdueNotifiedAt && isOverdue(i, state.settings)) {
+      i.overdueNotifiedAt = Date.now();
+      messages.push("⏰ Прострочено: " + describeItem(i));
+    }
+  });
+  if (messages.length) await notifyTelegram(env, messages.join("\n\n"));
+  return messages.length > 0;
+}
+
 export async function onRequestGet({ request, env }) {
   var role = checkRole(request, env);
   if (!role) return json({ error: "unauthorized" }, 401);
@@ -81,6 +133,9 @@ export async function onRequestGet({ request, env }) {
   }
   var raw = await env.STATE.get(KV_KEY);
   var state = raw ? JSON.parse(raw) : EMPTY;
+  if (await checkOverdueAndNotify(state, env)) {
+    await env.STATE.put(KV_KEY, JSON.stringify(state));
+  }
   state.role = role;
   return json(state);
 }
@@ -106,6 +161,15 @@ export async function onRequestPost({ request, env }) {
   var current = raw ? JSON.parse(raw) : EMPTY;
 
   await dailySnapshot(current, env);
+
+  var previousIds = {};
+  (current.items || []).forEach(function (i) { previousIds[i.id] = true; });
+  var newItems = (incoming.items || []).filter(function (i) { return i.id && !previousIds[i.id] && !i.deleted; });
+  if (newItems.length) {
+    await Promise.all(newItems.map(function (i) {
+      return notifyTelegram(env, "🆕 Нове замовлення\n" + describeItem(i));
+    }));
+  }
 
   var mergedItems = mergeItems(current.items, incoming.items);
   mergedItems = await sweepTombstones(mergedItems, env);

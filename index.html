@@ -1309,7 +1309,7 @@
       id: uid(), createdAt: Date.now(), createdBy: getUserName(),
       updatedAt: Date.now(), updatedBy: getUserName(),
       leadDays: state.settings.leadDays,
-      done:false, received:false, payDate:"", deleted:false
+      done:false, received:false, payDate:"", deleted:false, overdueNotifiedAt:null
     });
     state.items.push(copy);
     save(); closeEdit(); render(); showToast("Позицію продубльовано"); syncPush();
