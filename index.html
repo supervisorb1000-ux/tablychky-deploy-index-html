@@ -247,7 +247,7 @@
 
   .field{margin-bottom:13px;}
   .field label{display:block; font-size:11.5px; font-weight:700; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:6px;}
-  .field input[type=text], .field input[type=number], .field input[type=date], .field select, .field textarea{
+  .field input[type=text], .field input[type=number], .field input[type=date], .field input[type=password], .field select, .field textarea{
     width:100%; padding:11px 12px; border-radius:13px; border:1px solid var(--field-line); background:var(--field);
     color:var(--ink); font-size:14.5px; font-family:inherit;
   }
@@ -576,6 +576,19 @@
   </div>
 </div>
 
+<div class="overlay" id="tokenOverlay">
+  <div class="sheet confirm-sheet">
+    <div class="confirm-msg">Потрібен код доступу до застосунку</div>
+    <div class="field" style="margin-top:12px;">
+      <input type="password" id="tokenInput" placeholder="Код доступу" autocomplete="off">
+    </div>
+    <div class="btnrow">
+      <button class="btn ghost" id="tokenCancel">Скасувати</button>
+      <button class="btn primary" id="tokenOk">Увійти</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -602,17 +615,44 @@
     var t = localStorage.getItem(TOKEN_KEY);
     return t ? { "X-App-Token": t } : {};
   }
+  var tokenOverlay = document.getElementById("tokenOverlay"), tokenInput = document.getElementById("tokenInput"),
+      tokenOkBtn = document.getElementById("tokenOk"), tokenCancelBtn = document.getElementById("tokenCancel");
+  function showTokenPrompt(){
+    return new Promise(function(resolve){
+      tokenInput.value = "";
+      tokenOverlay.classList.add("open");
+      setTimeout(function(){ tokenInput.focus(); }, 50);
+      function cleanup(result){
+        tokenOverlay.classList.remove("open");
+        tokenOkBtn.removeEventListener("click", onOk);
+        tokenCancelBtn.removeEventListener("click", onCancel);
+        tokenInput.removeEventListener("keydown", onKey);
+        tokenOverlay.removeEventListener("click", onBackdrop);
+        resolve(result);
+      }
+      function onOk(){ cleanup(tokenInput.value.trim() || null); }
+      function onCancel(){ cleanup(null); }
+      function onKey(e){ if(e.key==="Enter") onOk(); }
+      function onBackdrop(e){ if(e.target===tokenOverlay) cleanup(null); }
+      tokenOkBtn.addEventListener("click", onOk);
+      tokenCancelBtn.addEventListener("click", onCancel);
+      tokenInput.addEventListener("keydown", onKey);
+      tokenOverlay.addEventListener("click", onBackdrop);
+    });
+  }
   function apiFetch(url, opts){
     opts = opts || {};
     opts.headers = Object.assign({}, opts.headers||{}, authHeaders());
     return fetch(url, opts).then(function(r){
       if(r.status===401){
-        var t = window.prompt("Потрібен код доступу до застосунку:");
-        if(t){
-          localStorage.setItem(TOKEN_KEY, t);
-          var retryOpts = Object.assign({}, opts, { headers: Object.assign({}, opts.headers, authHeaders()) });
-          return fetch(url, retryOpts);
-        }
+        return showTokenPrompt().then(function(t){
+          if(t){
+            localStorage.setItem(TOKEN_KEY, t);
+            var retryOpts = Object.assign({}, opts, { headers: Object.assign({}, opts.headers, authHeaders()) });
+            return fetch(url, retryOpts);
+          }
+          return r;
+        });
       }
       return r;
     });
