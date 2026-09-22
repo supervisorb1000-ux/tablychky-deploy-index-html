@@ -208,6 +208,14 @@
     .group-head .gt{color:#000!important; font-size:15px;}
   }
 
+  .role-view .fab, .role-view #selectModeBtn, .role-view #settingsBtn{display:none!important;}
+  .role-view-badge{
+    display:none; align-items:center; justify-content:center; height:34px; padding:0 12px; border-radius:999px;
+    border:1px solid var(--pill-line); background:var(--pill); font-size:11px; font-weight:800; color:var(--ink-soft);
+    white-space:nowrap; flex:0 0 auto;
+  }
+  .role-view .role-view-badge{display:flex;}
+
   .fab{
     position:fixed; right:18px; bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:30;
     width:58px; height:58px; border-radius:50%; border:none; cursor:pointer;
@@ -231,6 +239,8 @@
     box-shadow:0 -20px 60px rgba(0,0,0,0.5);
   }
   .overlay.open .sheet{transform:translateY(0);}
+  .confirm-sheet{max-width:420px; margin:0 auto; border-radius:26px;}
+  .confirm-msg{font-size:15px; line-height:1.5; color:var(--ink); padding:6px 2px 2px;}
   .sheet-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;}
   .sheet-head h2{font-size:17px; font-weight:800;}
   .sheet-head .close{width:32px; height:32px; border-radius:10px; border:none; background:var(--field); color:var(--ink-soft); display:grid; place-items:center; cursor:pointer;}
@@ -325,6 +335,7 @@
     <button class="icon-btn" id="settingsBtn" aria-label="Налаштування">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
+    <div class="role-view-badge">Перегляд</div>
   </div>
 </header>
 
@@ -440,9 +451,11 @@
     <div class="field">
       <label>Файли (DXF та інші)</label>
       <div id="fileList" class="filelist"></div>
-      <label class="btn ghost filebtn" for="fFile">＋ Додати файл</label>
-      <input type="file" id="fFile" accept=".dxf,.dwg,.pdf,.png,.jpg,.jpeg" multiple hidden>
-      <div class="hint">До 5 МБ на файл. Файли бачать усі, хто користується застосунком.</div>
+      <div id="fileAddRow">
+        <label class="btn ghost filebtn" for="fFile">＋ Додати файл</label>
+        <input type="file" id="fFile" accept=".dxf,.dwg,.pdf,.png,.jpg,.jpeg" multiple hidden>
+        <div class="hint">До 5 МБ на файл. Файли бачать усі, хто користується застосунком.</div>
+      </div>
     </div>
 
     <div class="checkrow">
@@ -553,6 +566,16 @@
   </div>
 </div>
 
+<div class="overlay" id="confirmOverlay">
+  <div class="sheet confirm-sheet">
+    <div id="confirmMsg" class="confirm-msg"></div>
+    <div class="btnrow">
+      <button class="btn ghost" id="confirmCancel">Скасувати</button>
+      <button class="btn danger" id="confirmOk">Так</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -561,6 +584,12 @@
   var LS_KEY = "tablychky-b1000-v1";
   var TOKEN_KEY = "tablychky-token";
   var USERNAME_KEY = "tablychky-username";
+  var ROLE_KEY = "tablychky-role";
+  var currentRole = localStorage.getItem(ROLE_KEY) || "edit";
+  function isViewOnly(){ return currentRole === "view"; }
+  function applyRoleUI(){
+    document.body.classList.toggle("role-view", isViewOnly());
+  }
   var API = "/api/state";
   var DEFAULTS = { rate:160, multSteel:4.3, multPainted:5.3, coef:0.0000077, multBent:6, leadDays:2 };
   var BENT_SHAPES = ["Гнута навпіл", "Будиночком", "З L-подібною ніжкою"];
@@ -673,6 +702,11 @@
     if(remote.settings && (remote.settingsUpdatedAt||0) >= (state.settingsUpdatedAt||0)){
       state.settings = Object.assign({}, DEFAULTS, remote.settings);
       state.settingsUpdatedAt = remote.settingsUpdatedAt||0;
+    }
+    if(remote.role && remote.role!==currentRole){
+      currentRole = remote.role;
+      localStorage.setItem(ROLE_KEY, currentRole);
+      applyRoleUI();
     }
     save();
   }
@@ -868,9 +902,9 @@
     Array.prototype.forEach.call(listEl.querySelectorAll(".card"), function(card){
       card.addEventListener("click", function(e){
         var id = card.getAttribute("data-id");
-        if(selectMode){ toggleSelect(id, card); return; }
+        if(selectMode && !isViewOnly()){ toggleSelect(id, card); return; }
         var tg = e.target.closest("[data-tg]");
-        if(tg){ toggleStatus(id, tg.getAttribute("data-tg")); return; }
+        if(tg && !isViewOnly()){ toggleStatus(id, tg.getAttribute("data-tg")); return; }
         openEdit(id);
       });
     });
@@ -949,6 +983,7 @@
     selectBar.hidden = n===0;
   }
   document.getElementById("selectModeBtn").addEventListener("click", function(){
+    if(isViewOnly()) return;
     selectMode = !selectMode;
     selectedIds = {};
     selectBar.hidden = true;
@@ -975,20 +1010,22 @@
   document.getElementById("selReceived").addEventListener("click", function(){ bulkSet("received"); });
   document.getElementById("selDelete").addEventListener("click", function(){
     var n = Object.keys(selectedIds).length;
-    if(!confirm("Видалити "+n+" позицій?")) return;
-    pullRemote().then(function(){
-      var ids = Object.keys(selectedIds);
-      ids.forEach(function(id){
-        var item = state.items.find(function(i){ return i.id===id; });
-        if(!item) return;
-        item.deleted = true;
-        item.updatedAt = Date.now();
-        item.updatedBy = getUserName();
+    showConfirm("Видалити "+n+" позицій?").then(function(ok){
+      if(!ok) return;
+      pullRemote().then(function(){
+        var ids = Object.keys(selectedIds);
+        ids.forEach(function(id){
+          var item = state.items.find(function(i){ return i.id===id; });
+          if(!item) return;
+          item.deleted = true;
+          item.updatedAt = Date.now();
+          item.updatedBy = getUserName();
+        });
+        save();
+        selectMode = false; selectedIds = {}; selectBar.hidden = true;
+        document.getElementById("selectModeBtn").classList.remove("on");
+        render(); showToast(ids.length+" позицій видалено"); syncPush();
       });
-      save();
-      selectMode = false; selectedIds = {}; selectBar.hidden = true;
-      document.getElementById("selectModeBtn").classList.remove("on");
-      render(); showToast(ids.length+" позицій видалено"); syncPush();
     });
   });
   document.getElementById("selCancel").addEventListener("click", function(){
@@ -1012,15 +1049,27 @@
       materialSeg=document.getElementById("materialSeg"), materialHint=document.getElementById("materialHint"),
       manualPriceField=document.getElementById("manualPriceField"), priceValue=document.getElementById("priceValue"),
       formulaHint=document.getElementById("formulaHint"), deleteRow=document.getElementById("deleteRow"),
-      duplicateRow=document.getElementById("duplicateRow"), metaHint=document.getElementById("metaHint");
+      duplicateRow=document.getElementById("duplicateRow"), metaHint=document.getElementById("metaHint"),
+      saveEditBtn=document.getElementById("saveEdit"), fileAddRow=document.getElementById("fileAddRow");
   var currentMaterial = "steel";
 
   function openEdit(id){
+    if(isViewOnly() && !id){ showToast("Тільки перегляд — редагування вимкнено"); return; }
     editingId = id || null;
     var item = editingId ? state.items.find(function(i){return i.id===editingId;}) : null;
-    document.getElementById("sheetTitle").textContent = item ? "Редагувати табличку" : "Нова табличка";
-    deleteRow.hidden = !item;
-    duplicateRow.hidden = !item;
+    var readonly = isViewOnly();
+    document.getElementById("sheetTitle").textContent = readonly ? "Перегляд позиції" : (item ? "Редагувати табличку" : "Нова табличка");
+    deleteRow.hidden = readonly || !item;
+    duplicateRow.hidden = readonly || !item;
+    saveEditBtn.hidden = readonly;
+    document.getElementById("cancelEdit").textContent = readonly ? "Закрити" : "Скасувати";
+    fileAddRow.hidden = readonly;
+    Array.prototype.forEach.call(editOverlay.querySelectorAll("input, select, textarea"), function(el){
+      el.disabled = readonly;
+    });
+    Array.prototype.forEach.call(materialSeg.querySelectorAll("button"), function(b){
+      b.disabled = readonly;
+    });
     if(item){
       metaHint.hidden = false;
       metaHint.textContent = "Створено "+fmtDate(item.createdAt)+(item.createdBy?" ("+item.createdBy+")":"")+
@@ -1116,7 +1165,7 @@
     fileListEl.innerHTML = draftFiles.map(function(f,i){
       return '<div class="fileitem"><button type="button" class="filename" data-dl="'+i+'">📎 '+esc(f.name)+'</button>'+
         '<span class="filesize">'+fmtSize(f.size)+'</span>'+
-        '<button type="button" class="filedel" data-rm="'+i+'" aria-label="Прибрати">✕</button></div>';
+        (isViewOnly() ? '' : '<button type="button" class="filedel" data-rm="'+i+'" aria-label="Прибрати">✕</button>')+'</div>';
     }).join("");
   }
   fileListEl.addEventListener("click", function(e){
@@ -1149,43 +1198,51 @@
   editOverlay.addEventListener("click", function(e){ if(e.target===editOverlay) closeEdit(); });
 
   document.getElementById("saveEdit").addEventListener("click", function(){
+    if(isViewOnly()) return;
     var d = draftItem();
-    if(!d.w || !d.h){
-      if(!confirm("Розмір (ширина/висота) не вказано — зберегти без розміру?")) return;
-    }
-    if(d.manual && (Number(fManualPrice.value)||0)<=0){
-      if(!confirm("Ручна ціна не вказана (0 ₴) — зберегти так?")) return;
-    }
-    var payload = {
-      tpl:d.tpl, w:d.w, h:d.h, material:d.material,
-      corners:fCorners.value, grade:fGrade.value.trim(), holes:fHoles.value.trim(),
-      shape:fShape.value, rework:fRework.checked, comment:fComment.value.trim(), files:draftFiles.slice(),
-      qty:d.qty||1, manual:d.manual, manualPrice:d.manual ? (Number(fManualPrice.value)||0) : null,
-      done:fDone.checked, received:fReceived.checked, payDate:fPayDate.value,
-      deleted:false, updatedAt:Date.now(), updatedBy:getUserName()
-    };
-    var applyAndSave = function(){
-      if(editingId){
-        var item = state.items.find(function(i){return i.id===editingId;});
-        if(item) Object.assign(item, payload);
-        else { payload.id = editingId; payload.createdAt = Date.now(); payload.createdBy = getUserName(); payload.leadDays = state.settings.leadDays; state.items.push(payload); }
-      } else {
-        payload.id = uid();
-        payload.createdAt = Date.now();
-        payload.createdBy = getUserName();
-        payload.leadDays = state.settings.leadDays;
-        state.items.push(payload);
-      }
-      save(); closeEdit(); render(); showToast("Збережено"); syncPush();
-    };
-    if(editingId) pullRemote().then(applyAndSave);
-    else applyAndSave();
+    var checkSize = (!d.w || !d.h)
+      ? showConfirm("Розмір (ширина/висота) не вказано — зберегти без розміру?", "Зберегти")
+      : Promise.resolve(true);
+    checkSize.then(function(ok){
+      if(!ok) return;
+      var checkPrice = (d.manual && (Number(fManualPrice.value)||0)<=0)
+        ? showConfirm("Ручна ціна не вказана (0 ₴) — зберегти так?", "Зберегти")
+        : Promise.resolve(true);
+      checkPrice.then(function(ok2){
+        if(!ok2) return;
+        var payload = {
+          tpl:d.tpl, w:d.w, h:d.h, material:d.material,
+          corners:fCorners.value, grade:fGrade.value.trim(), holes:fHoles.value.trim(),
+          shape:fShape.value, rework:fRework.checked, comment:fComment.value.trim(), files:draftFiles.slice(),
+          qty:d.qty||1, manual:d.manual, manualPrice:d.manual ? (Number(fManualPrice.value)||0) : null,
+          done:fDone.checked, received:fReceived.checked, payDate:fPayDate.value,
+          deleted:false, updatedAt:Date.now(), updatedBy:getUserName()
+        };
+        var applyAndSave = function(){
+          if(editingId){
+            var item = state.items.find(function(i){return i.id===editingId;});
+            if(item) Object.assign(item, payload);
+            else { payload.id = editingId; payload.createdAt = Date.now(); payload.createdBy = getUserName(); payload.leadDays = state.settings.leadDays; state.items.push(payload); }
+          } else {
+            payload.id = uid();
+            payload.createdAt = Date.now();
+            payload.createdBy = getUserName();
+            payload.leadDays = state.settings.leadDays;
+            state.items.push(payload);
+          }
+          save(); closeEdit(); render(); showToast("Збережено"); syncPush();
+        };
+        if(editingId) pullRemote().then(applyAndSave);
+        else applyAndSave();
+      });
+    });
   });
 
   var deleteUndoTimer = null;
   document.getElementById("deleteEdit").addEventListener("click", function(){
-    if(!editingId) return;
-    if(!confirm("Видалити цю позицію?")) return;
+    if(isViewOnly() || !editingId) return;
+    showConfirm("Видалити цю позицію?").then(function(ok){
+    if(!ok) return;
     var item = state.items.find(function(i){return i.id===editingId;});
     if(!item) return;
     item.deleted = true;
@@ -1201,10 +1258,11 @@
       item.updatedBy = getUserName();
       save(); render(); syncPush();
     }});
+    });
   });
 
   document.getElementById("duplicateEdit").addEventListener("click", function(){
-    if(!editingId) return;
+    if(isViewOnly() || !editingId) return;
     var src = state.items.find(function(i){return i.id===editingId;});
     if(!src) return;
     var copy = Object.assign({}, src, {
@@ -1225,6 +1283,7 @@
       sUserName=document.getElementById("sUserName");
 
   function openSettings(){
+    if(isViewOnly()) return;
     sRate.value = state.settings.rate;
     sMultSteel.value = state.settings.multSteel;
     sMultPainted.value = state.settings.multPainted;
@@ -1295,10 +1354,35 @@
     }
   }
 
+  // ---------- confirm dialog (styled replacement for window.confirm) ----------
+  var confirmOverlay = document.getElementById("confirmOverlay"), confirmMsgEl = document.getElementById("confirmMsg"),
+      confirmOkBtn = document.getElementById("confirmOk"), confirmCancelBtn = document.getElementById("confirmCancel");
+  function showConfirm(message, okLabel){
+    return new Promise(function(resolve){
+      confirmMsgEl.textContent = message;
+      confirmOkBtn.textContent = okLabel || "Так, видалити";
+      confirmOverlay.classList.add("open");
+      function cleanup(result){
+        confirmOverlay.classList.remove("open");
+        confirmOkBtn.removeEventListener("click", onOk);
+        confirmCancelBtn.removeEventListener("click", onCancel);
+        confirmOverlay.removeEventListener("click", onBackdrop);
+        resolve(result);
+      }
+      function onOk(){ cleanup(true); }
+      function onCancel(){ cleanup(false); }
+      function onBackdrop(e){ if(e.target===confirmOverlay) cleanup(false); }
+      confirmOkBtn.addEventListener("click", onOk);
+      confirmCancelBtn.addEventListener("click", onCancel);
+      confirmOverlay.addEventListener("click", onBackdrop);
+    });
+  }
+
   document.addEventListener("visibilitychange", function(){
     if(document.visibilityState==="visible") syncPull();
   });
 
+  applyRoleUI();
   render();
   syncPull();
   setInterval(syncPull, 9000);

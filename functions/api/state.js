@@ -13,9 +13,15 @@ function json(data, status) {
   });
 }
 
-function checkAuth(request, env) {
-  if (!env.APP_TOKEN) return true;
-  return request.headers.get("X-App-Token") === env.APP_TOKEN;
+// Returns "edit", "view", or null (no valid token). When neither
+// APP_TOKEN nor APP_TOKEN_VIEW is configured, access stays fully open
+// (as "edit") — that's the default, backward-compatible state.
+function checkRole(request, env) {
+  if (!env.APP_TOKEN && !env.APP_TOKEN_VIEW) return "edit";
+  var token = request.headers.get("X-App-Token");
+  if (env.APP_TOKEN && token === env.APP_TOKEN) return "edit";
+  if (env.APP_TOKEN_VIEW && token === env.APP_TOKEN_VIEW) return "view";
+  return null;
 }
 
 function mergeItems(current, incoming) {
@@ -62,7 +68,8 @@ async function dailySnapshot(current, env) {
 }
 
 export async function onRequestGet({ request, env }) {
-  if (!checkAuth(request, env)) return json({ error: "unauthorized" }, 401);
+  var role = checkRole(request, env);
+  if (!role) return json({ error: "unauthorized" }, 401);
   var fileId = new URL(request.url).searchParams.get("file");
   if (fileId) {
     if (!FILE_ID.test(fileId)) return json({ error: "bad id" }, 400);
@@ -73,11 +80,16 @@ export async function onRequestGet({ request, env }) {
     });
   }
   var raw = await env.STATE.get(KV_KEY);
-  return json(raw ? JSON.parse(raw) : EMPTY);
+  var state = raw ? JSON.parse(raw) : EMPTY;
+  state.role = role;
+  return json(state);
 }
 
 export async function onRequestPost({ request, env }) {
-  if (!checkAuth(request, env)) return json({ error: "unauthorized" }, 401);
+  var role = checkRole(request, env);
+  if (!role) return json({ error: "unauthorized" }, 401);
+  if (role !== "edit") return json({ error: "forbidden", role: role }, 403);
+
   var fileId = new URL(request.url).searchParams.get("file");
   if (fileId) {
     if (!FILE_ID.test(fileId)) return json({ error: "bad id" }, 400);
@@ -107,5 +119,6 @@ export async function onRequestPost({ request, env }) {
   };
 
   await env.STATE.put(KV_KEY, JSON.stringify(merged));
+  merged.role = role;
   return json(merged);
 }
