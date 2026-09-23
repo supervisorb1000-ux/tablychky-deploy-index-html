@@ -435,6 +435,16 @@
 
     <div class="settings-note">Оптові ціни за штуку (округлені до 5 ₴):</div>
     <div id="cWholesale" class="calc-wholesale"></div>
+
+    <div class="field" id="cQtyRow" hidden>
+      <label for="cQty">Кількість в угоді, шт</label>
+      <input type="number" id="cQty" inputmode="numeric" min="1" value="1">
+    </div>
+    <div class="price-preview" id="cMarginBlock" hidden>
+      <div class="pp-row"><div class="l">Сума угоди</div><div class="v num" id="cDealRevenue">0 ₴</div></div>
+      <div class="pp-row"><div class="l">Собівартість угоди (лише метал)</div><div class="v num" id="cDealCost">0 ₴</div></div>
+      <div class="pp-row total"><div class="l">Маржа за угоду</div><div class="v num" id="cDealMargin">0 ₴</div></div>
+    </div>
   </div>
   <div class="empty" id="cNotReady" hidden>Формула для цього типу ще не додана.</div>
 </div>
@@ -1611,6 +1621,8 @@
       cLegRow=document.getElementById("cLegRow"), cLegCm=document.getElementById("cLegCm"), cBentHint=document.getElementById("cBentHint"),
       cBothSidesRow=document.getElementById("cBothSidesRow"), cBothSides=document.getElementById("cBothSides"),
       cDiscountRow=document.getElementById("cDiscountRow"), cDiscPlate=document.getElementById("cDiscPlate"), cDiscEngrave=document.getElementById("cDiscEngrave"),
+      cQtyRow=document.getElementById("cQtyRow"), cQty=document.getElementById("cQty"), cMarginBlock=document.getElementById("cMarginBlock"),
+      cDealRevenue=document.getElementById("cDealRevenue"), cDealCost=document.getElementById("cDealCost"), cDealMargin=document.getElementById("cDealMargin"),
       cSameEngrave=document.getElementById("cSameEngrave"), cEngraveSizeRow=document.getElementById("cEngraveSizeRow"),
       cEW=document.getElementById("cEW"), cEH=document.getElementById("cEH"),
       cCost=document.getElementById("cCost"), cPlate=document.getElementById("cPlate"),
@@ -1624,6 +1636,13 @@
     { label:"Від 50 і більше", mult:0.50, note:"−50%" }
   ];
   var CALC_READY_TYPES = ["steel_flat","painted_flat","bent_half","bent_l"];
+  function qtyMult(qty){
+    if(qty>=50) return 0.50;
+    if(qty>=20) return 0.85;
+    if(qty>=10) return 0.93;
+    if(qty>=5) return 0.95;
+    return 1;
+  }
   function roundUp5(n){ return Math.ceil(n/5)*5; }
   function calcPlateCost(w,h,mult){ return w*h*state.settings.coef*state.settings.rate*mult; }
   function calcEngraveCost(ew,eh){
@@ -1677,6 +1696,20 @@
     cWholesaleEl.innerHTML = WHOLESALE_TIERS.map(function(t){
       return '<div class="row"><span class="l">'+t.label+' ('+t.note+')</span><span class="v num">'+fmt(roundUp5(rawTotal*t.mult))+' ₴</span></div>';
     }).join("");
+
+    var showMargin = currentRole==="edit";
+    cQtyRow.hidden = !showMargin;
+    cMarginBlock.hidden = !showMargin;
+    if(showMargin){
+      var qty = Math.max(1, Number(cQty.value)||1);
+      var unitPrice = roundUp5(rawTotal*qtyMult(qty));
+      var revenue = unitPrice*qty;
+      var dealCost = cost*qty;
+      var margin = revenue-dealCost;
+      cDealRevenue.textContent = fmt(revenue)+" ₴";
+      cDealCost.textContent = fmt(Math.round(dealCost))+" ₴";
+      cDealMargin.textContent = fmt(Math.round(margin))+" ₴ ("+(revenue>0?Math.round(margin/revenue*100):0)+"%)";
+    }
   }
   cType.addEventListener("change", updateCalc);
   cSameEngrave.addEventListener("change", function(){
@@ -1684,7 +1717,7 @@
     updateCalc();
   });
   cBothSides.addEventListener("change", updateCalc);
-  [cDiscPlate,cDiscEngrave].forEach(function(el){ el.addEventListener("input", updateCalc); });
+  [cDiscPlate,cDiscEngrave,cQty].forEach(function(el){ el.addEventListener("input", updateCalc); });
   [cW,cH,cEW,cEH,cLegCm].forEach(function(el){ el.addEventListener("input", updateCalc); });
 
   applyRoleUI();
