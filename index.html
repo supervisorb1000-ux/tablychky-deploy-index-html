@@ -393,10 +393,9 @@
     <label for="cType">Тип таблички</label>
     <select id="cType">
       <option value="steel_flat">Нержавійка, пряма</option>
-      <option value="painted_flat" disabled>Чорна фарбована, пряма — незабаром</option>
-      <option value="bent_half" disabled>Гнута навпіл — незабаром</option>
-      <option value="bent_house" disabled>Будиночком — незабаром</option>
-      <option value="bent_l" disabled>З L-подібною ніжкою — незабаром</option>
+      <option value="painted_flat">Чорна фарбована, пряма</option>
+      <option value="bent_half" disabled>Гнута навпіл — уточнюємо формулу</option>
+      <option value="bent_l" disabled>З L-подібною ніжкою — уточнюємо формулу</option>
     </select>
   </div>
   <div id="cReady">
@@ -504,7 +503,6 @@
       <select id="fShape">
         <option value="">Пряма (без згину)</option>
         <option>Гнута навпіл</option>
-        <option>Будиночком</option>
         <option>З L-подібною ніжкою</option>
       </select>
       <div class="hint" id="shapeHint"></div>
@@ -1609,8 +1607,9 @@
     { label:"Від 20 і більше", mult:0.85, note:"−15%" },
     { label:"Від 50 і більше", mult:0.50, note:"−50%" }
   ];
+  var CALC_READY_TYPES = ["steel_flat","painted_flat"];
   function roundUp5(n){ return Math.ceil(n/5)*5; }
-  function calcPlateCost(w,h){ return w*h*state.settings.coef*state.settings.rate*state.settings.multSteel; }
+  function calcPlateCost(w,h,mult){ return w*h*state.settings.coef*state.settings.rate*mult; }
   function calcEngraveCost(ew,eh){
     var area = (Number(ew)||0)*(Number(eh)||0);
     var base = state.settings.engraveBase, step = state.settings.engraveStep;
@@ -1618,13 +1617,15 @@
     return base + Math.ceil((area-CALC_ENGRAVE_TILE)/CALC_ENGRAVE_TILE)*step;
   }
   function updateCalc(){
-    cReady.hidden = cType.value!=="steel_flat";
-    cNotReady.hidden = cType.value==="steel_flat";
-    if(cType.value!=="steel_flat") return;
+    var ready = CALC_READY_TYPES.indexOf(cType.value)!==-1;
+    cReady.hidden = !ready;
+    cNotReady.hidden = ready;
+    if(!ready) return;
     var w = Number(cW.value)||0, h = Number(cH.value)||0;
     var ew = cSameEngrave.checked ? w : (Number(cEW.value)||0);
     var eh = cSameEngrave.checked ? h : (Number(cEH.value)||0);
-    var cost = calcPlateCost(w,h);
+    var mult = cType.value==="painted_flat" ? state.settings.multPainted : state.settings.multSteel;
+    var cost = calcPlateCost(w,h,mult);
     var plate = cost*state.settings.plateMarkup;
     var engrave = calcEngraveCost(ew,eh);
     var rawTotal = plate+engrave;
