@@ -1696,9 +1696,13 @@
     cCost.textContent = fmt(Math.round(cost))+" ₴";
     cPlate.textContent = fmt(Math.round(plate))+" ₴";
     cEngrave.textContent = fmt(Math.round(engrave))+" ₴";
-    cTotal.textContent = fmt(roundUp5(rawTotal))+" ₴";
+    var unitPriceBase = roundUp5(rawTotal);
+    cTotal.textContent = fmt(unitPriceBase)+" ₴";
+    var prevTierPrice = unitPriceBase;
     cWholesaleEl.innerHTML = WHOLESALE_TIERS.map(function(t){
-      return '<div class="row"><span class="l">'+t.label+' ('+t.note+')</span><span class="v num">'+fmt(roundUp5(rawTotal*t.mult))+' ₴</span></div>';
+      var price = Math.min(roundUp5(rawTotal*t.mult), prevTierPrice-5);
+      prevTierPrice = price;
+      return '<div class="row"><span class="l">'+t.label+' ('+t.note+')</span><span class="v num">'+fmt(price)+' ₴</span></div>';
     }).join("");
 
     var showMargin = currentRole==="edit";
