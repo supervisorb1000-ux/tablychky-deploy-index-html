@@ -886,6 +886,9 @@
       var item = state.items.find(function(i){return i.id===id;});
       if(!item) return;
       item[field] = !item[field];
+      // Un-completing an order is a sign something needs fixing — unlock it
+      // automatically instead of making them flip two switches.
+      if(field==="done" && !item.done) item.locked = false;
       item.updatedAt = Date.now();
       item.updatedBy = getUserName();
       save(); render(); syncPush();
@@ -953,7 +956,11 @@
         var id = card.getAttribute("data-id");
         if(selectMode && currentRole==="edit"){ toggleSelect(id, card); return; }
         var tg = e.target.closest("[data-tg]");
-        if(tg && currentRole==="edit"){ toggleStatus(id, tg.getAttribute("data-tg")); return; }
+        if(tg){
+          var field = tg.getAttribute("data-tg");
+          var canToggle = currentRole==="edit" || (isSupplier() && field==="locked");
+          if(canToggle){ toggleStatus(id, field); return; }
+        }
         openEdit(id);
       });
     });
@@ -977,6 +984,7 @@
     tags.push('<span class="tag">'+(Number(item.qty)||0)+' шт</span>');
     tags.push('<button type="button" data-tg="done" class="tag tagbtn '+(item.done?'status-done':'status-wait')+'">'+(item.done?'Виконано':'В роботі')+'</button>');
     tags.push('<button type="button" data-tg="received" class="tag tagbtn '+(item.received?'status-done':'status-wait')+'">'+(item.received?'Оплачено':'Не оплачено')+'</button>');
+    tags.push('<button type="button" data-tg="locked" class="tag tagbtn '+(item.locked?'status-done':'status-wait')+'">'+(item.locked?'Заблоковано':'Відкрито')+'</button>');
     if(item.files && item.files.length) tags.push('<span class="tag">📎 '+item.files.length+'</span>');
     var note = item.holes ? esc(item.holes) : "";
     var comment = item.comment ? esc(item.comment) : "";
@@ -1304,7 +1312,11 @@
         var applyAndSave = function(){
           if(editingId){
             var item = state.items.find(function(i){return i.id===editingId;});
-            if(item) Object.assign(item, payload);
+            if(item){
+              var wasDone = item.done;
+              Object.assign(item, payload);
+              if(wasDone && !item.done) item.locked = false;
+            }
             else { payload.id = editingId; payload.createdAt = Date.now(); payload.createdBy = getUserName(); payload.leadDays = state.settings.leadDays; payload.locked = true; state.items.push(payload); }
           } else {
             payload.id = uid();
