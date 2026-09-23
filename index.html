@@ -409,6 +409,10 @@
       <input type="number" id="cLegCm" inputmode="decimal" placeholder="3">
     </div>
     <div class="hint" id="cBentHint" hidden></div>
+    <div class="checkrow" id="cBothSidesRow" hidden>
+      <label for="cBothSides">Гравіювання з обох сторін</label>
+      <div class="switch"><input type="checkbox" id="cBothSides" checked><div class="track"><div class="thumb"></div></div></div>
+    </div>
     <div class="checkrow">
       <label for="cSameEngrave">Гравіювання на всю табличку</label>
       <div class="switch"><input type="checkbox" id="cSameEngrave" checked><div class="track"><div class="thumb"></div></div></div>
@@ -1601,6 +1605,7 @@
   // ---------- calculator (client quote) ----------
   var cType=document.getElementById("cType"), cW=document.getElementById("cW"), cH=document.getElementById("cH"),
       cLegRow=document.getElementById("cLegRow"), cLegCm=document.getElementById("cLegCm"), cBentHint=document.getElementById("cBentHint"),
+      cBothSidesRow=document.getElementById("cBothSidesRow"), cBothSides=document.getElementById("cBothSides"),
       cSameEngrave=document.getElementById("cSameEngrave"), cEngraveSizeRow=document.getElementById("cEngraveSizeRow"),
       cEW=document.getElementById("cEW"), cEH=document.getElementById("cEH"),
       cCost=document.getElementById("cCost"), cPlate=document.getElementById("cPlate"),
@@ -1646,12 +1651,14 @@
     } else {
       cBentHint.hidden = true;
     }
+    cBothSidesRow.hidden = type!=="bent_half";
     var ew = cSameEngrave.checked ? w : (Number(cEW.value)||0);
     var eh = cSameEngrave.checked ? h : (Number(cEH.value)||0);
     var mult = isBentType ? state.settings.multBent : (type==="painted_flat" ? state.settings.multPainted : state.settings.multSteel);
     var cost = calcPlateCost(w,effH,mult);
     var plate = cost*state.settings.plateMarkup;
     var engrave = calcEngraveCost(ew,eh);
+    if(type==="bent_half" && cBothSides.checked) engrave *= 2;
     var rawTotal = plate+engrave;
     cCost.textContent = fmt(Math.round(cost))+" ₴";
     cPlate.textContent = fmt(Math.round(plate))+" ₴";
@@ -1666,6 +1673,7 @@
     cEngraveSizeRow.hidden = cSameEngrave.checked;
     updateCalc();
   });
+  cBothSides.addEventListener("change", updateCalc);
   [cW,cH,cEW,cEH,cLegCm].forEach(function(el){ el.addEventListener("input", updateCalc); });
 
   applyRoleUI();
