@@ -14,15 +14,39 @@ function json(data, status) {
   });
 }
 
-// Returns "edit", "view", or null (no valid token). When neither
-// APP_TOKEN nor APP_TOKEN_VIEW is configured, access stays fully open
-// (as "edit") — that's the default, backward-compatible state.
+// Returns "edit", "view", "supplier", or null (no valid token). When none
+// of APP_TOKEN / APP_TOKEN_VIEW / APP_TOKEN_SUPPLIER is configured, access
+// stays fully open (as "edit") — the default, backward-compatible state.
 function checkRole(request, env) {
-  if (!env.APP_TOKEN && !env.APP_TOKEN_VIEW) return "edit";
+  if (!env.APP_TOKEN && !env.APP_TOKEN_VIEW && !env.APP_TOKEN_SUPPLIER) return "edit";
   var token = request.headers.get("X-App-Token");
   if (env.APP_TOKEN && token === env.APP_TOKEN) return "edit";
   if (env.APP_TOKEN_VIEW && token === env.APP_TOKEN_VIEW) return "view";
+  if (env.APP_TOKEN_SUPPLIER && token === env.APP_TOKEN_SUPPLIER) return "supplier";
   return null;
+}
+
+// The supplier role may only flip an item's "locked" flag (its "в
+// роботі"/"на доопрацюванні" toggle) — nothing else. Returns true iff every
+// item in `incomingItems` that differs from its stored counterpart differs
+// ONLY in locked/updatedAt/updatedBy, and no item is newly created.
+var SUPPLIER_ALLOWED_KEYS = { locked: true, updatedAt: true, updatedBy: true };
+function isSupplierChangeAllowed(current, incomingItems) {
+  var byId = {};
+  (current || []).forEach(function (i) { byId[i.id] = i; });
+  for (var idx = 0; idx < (incomingItems || []).length; idx++) {
+    var ni = incomingItems[idx];
+    var oi = byId[ni.id];
+    if (!oi) return false; // no creating items as supplier
+    var keys = {};
+    Object.keys(oi).forEach(function (k) { keys[k] = true; });
+    Object.keys(ni).forEach(function (k) { keys[k] = true; });
+    for (var k in keys) {
+      if (SUPPLIER_ALLOWED_KEYS[k]) continue;
+      if (JSON.stringify(oi[k]) !== JSON.stringify(ni[k])) return false;
+    }
+  }
+  return true;
 }
 
 function mergeItems(current, incoming) {
@@ -143,10 +167,11 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   var role = checkRole(request, env);
   if (!role) return json({ error: "unauthorized" }, 401);
-  if (role !== "edit") return json({ error: "forbidden", role: role }, 403);
+  if (role === "view") return json({ error: "forbidden", role: role }, 403);
 
   var fileId = new URL(request.url).searchParams.get("file");
   if (fileId) {
+    if (role !== "edit") return json({ error: "forbidden", role: role }, 403);
     if (!FILE_ID.test(fileId)) return json({ error: "bad id" }, 400);
     var body = await request.arrayBuffer();
     if (body.byteLength > MAX_FILE) return json({ error: "too large" }, 413);
@@ -159,6 +184,15 @@ export async function onRequestPost({ request, env }) {
   var incoming = JSON.parse(rawBody);
   var raw = await env.STATE.get(KV_KEY);
   var current = raw ? JSON.parse(raw) : EMPTY;
+
+  if (role === "supplier") {
+    if (!isSupplierChangeAllowed(current.items, incoming.items)) {
+      return json({ error: "forbidden", role: role }, 403);
+    }
+    // The supplier can't touch settings, no matter what their client sends.
+    incoming.settings = current.settings;
+    incoming.settingsUpdatedAt = current.settingsUpdatedAt;
+  }
 
   await dailySnapshot(current, env);
 
