@@ -422,6 +422,10 @@
       <div class="field"><label for="cEH">Висота макета, мм</label><input type="number" id="cEH" inputmode="decimal"></div>
     </div>
 
+    <div class="row2" id="cDiscountRow" hidden>
+      <div class="field"><label for="cDiscPlate">Знижка на табличку, %</label><input type="number" id="cDiscPlate" inputmode="decimal" value="0" min="0" max="100"></div>
+      <div class="field"><label for="cDiscEngrave">Знижка на гравіювання, %</label><input type="number" id="cDiscEngrave" inputmode="decimal" value="0" min="0" max="100"></div>
+    </div>
     <div class="price-preview">
       <div class="pp-row"><div class="l">Собівартість таблички</div><div class="v num" id="cCost">0 ₴</div></div>
       <div class="pp-row"><div class="l">Вартість таблички</div><div class="v num" id="cPlate">0 ₴</div></div>
@@ -1606,6 +1610,7 @@
   var cType=document.getElementById("cType"), cW=document.getElementById("cW"), cH=document.getElementById("cH"),
       cLegRow=document.getElementById("cLegRow"), cLegCm=document.getElementById("cLegCm"), cBentHint=document.getElementById("cBentHint"),
       cBothSidesRow=document.getElementById("cBothSidesRow"), cBothSides=document.getElementById("cBothSides"),
+      cDiscountRow=document.getElementById("cDiscountRow"), cDiscPlate=document.getElementById("cDiscPlate"), cDiscEngrave=document.getElementById("cDiscEngrave"),
       cSameEngrave=document.getElementById("cSameEngrave"), cEngraveSizeRow=document.getElementById("cEngraveSizeRow"),
       cEW=document.getElementById("cEW"), cEH=document.getElementById("cEH"),
       cCost=document.getElementById("cCost"), cPlate=document.getElementById("cPlate"),
@@ -1659,6 +1664,11 @@
     var plate = cost*state.settings.plateMarkup;
     var engrave = calcEngraveCost(ew,eh);
     if(type==="bent_half" && cBothSides.checked) engrave *= 1.5;
+    cDiscountRow.hidden = currentRole!=="edit";
+    if(currentRole==="edit"){
+      plate *= 1-(Math.min(100,Math.max(0,Number(cDiscPlate.value)||0))/100);
+      engrave *= 1-(Math.min(100,Math.max(0,Number(cDiscEngrave.value)||0))/100);
+    }
     var rawTotal = plate+engrave;
     cCost.textContent = fmt(Math.round(cost))+" ₴";
     cPlate.textContent = fmt(Math.round(plate))+" ₴";
@@ -1674,6 +1684,7 @@
     updateCalc();
   });
   cBothSides.addEventListener("change", updateCalc);
+  [cDiscPlate,cDiscEngrave].forEach(function(el){ el.addEventListener("input", updateCalc); });
   [cW,cH,cEW,cEH,cLegCm].forEach(function(el){ el.addEventListener("input", updateCalc); });
 
   applyRoleUI();
