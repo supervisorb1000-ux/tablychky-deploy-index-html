@@ -380,6 +380,11 @@
     </div>
     <div class="hint" id="metaHint" hidden style="margin-bottom:13px;"></div>
 
+    <div class="checkrow" id="lockedRow" hidden style="border-top:none; border-bottom:1px solid var(--glass-line-soft); margin-bottom:13px; padding-bottom:13px;">
+      <label for="fLocked">В роботі (розмір/кількість/матеріал заблоковано)</label>
+      <div class="switch"><input type="checkbox" id="fLocked"><div class="track"><div class="thumb"></div></div></div>
+    </div>
+
     <div class="field">
       <label for="fTpl">Макет / примітка</label>
       <input type="text" id="fTpl" placeholder="напр. індивідуальний дизайн, номер замовлення...">
@@ -948,11 +953,7 @@
         var id = card.getAttribute("data-id");
         if(selectMode && currentRole==="edit"){ toggleSelect(id, card); return; }
         var tg = e.target.closest("[data-tg]");
-        if(tg){
-          var field = tg.getAttribute("data-tg");
-          var canToggle = currentRole==="edit" || (isSupplier() && field==="locked");
-          if(canToggle){ toggleStatus(id, field); return; }
-        }
+        if(tg && currentRole==="edit"){ toggleStatus(id, tg.getAttribute("data-tg")); return; }
         openEdit(id);
       });
     });
@@ -974,9 +975,8 @@
     tags.push('<span class="tag '+(painted?'material-painted':'material-steel')+'">'+(painted?'Чорна фарбована':'Нержавійка')+'</span>');
     if(item.grade) tags.push('<span class="tag">сталь '+esc(item.grade)+'</span>');
     tags.push('<span class="tag">'+(Number(item.qty)||0)+' шт</span>');
-    tags.push('<button type="button" data-tg="done" class="tag tagbtn '+(item.done?'status-done':'status-wait')+'">'+(item.done?'Виконано':'Не готово')+'</button>');
+    tags.push('<button type="button" data-tg="done" class="tag tagbtn '+(item.done?'status-done':'status-wait')+'">'+(item.done?'Виконано':'В роботі')+'</button>');
     tags.push('<button type="button" data-tg="received" class="tag tagbtn '+(item.received?'status-done':'status-wait')+'">'+(item.received?'Оплачено':'Не оплачено')+'</button>');
-    tags.push('<button type="button" data-tg="locked" class="tag tagbtn '+(item.locked?'status-overdue':'status-wait')+'">'+(item.locked?'🔒 В роботі':'🔓 На доопрацюванні')+'</button>');
     if(item.files && item.files.length) tags.push('<span class="tag">📎 '+item.files.length+'</span>');
     var note = item.holes ? esc(item.holes) : "";
     var comment = item.comment ? esc(item.comment) : "";
@@ -1099,37 +1099,43 @@
       manualPriceField=document.getElementById("manualPriceField"), priceValue=document.getElementById("priceValue"),
       formulaHint=document.getElementById("formulaHint"), deleteRow=document.getElementById("deleteRow"),
       duplicateRow=document.getElementById("duplicateRow"), metaHint=document.getElementById("metaHint"),
-      saveEditBtn=document.getElementById("saveEdit"), fileAddRow=document.getElementById("fileAddRow");
+      saveEditBtn=document.getElementById("saveEdit"), fileAddRow=document.getElementById("fileAddRow"),
+      fLocked=document.getElementById("fLocked"), lockedRow=document.getElementById("lockedRow");
   var currentMaterial = "steel";
 
-  var currentEditLocked = false;
   var LOCKED_FIELD_IDS = ["fTpl","fW","fH","fCorners","fGrade","fHoles","fShape","fRework","fQty"];
+  var currentEditLocked = false;
+  function applyLockedFieldsUI(readonly, locked){
+    currentEditLocked = locked;
+    fileAddRow.hidden = readonly || locked;
+    LOCKED_FIELD_IDS.forEach(function(fid){
+      document.getElementById(fid).disabled = readonly || locked;
+    });
+    Array.prototype.forEach.call(materialSeg.querySelectorAll("button"), function(b){
+      b.disabled = readonly || locked;
+    });
+  }
   function openEdit(id){
     if(isRestricted() && !id){ showToast(isSupplier() ? "Постачальнику доступне лише перемикання «в роботі»" : "Тільки перегляд — редагування вимкнено"); return; }
     editingId = id || null;
     var item = editingId ? state.items.find(function(i){return i.id===editingId;}) : null;
     var readonly = isRestricted();
-    var locked = !!item && !!item.locked && !readonly;
-    currentEditLocked = locked;
-    document.getElementById("sheetTitle").textContent = readonly ? "Перегляд позиції" : (locked ? "Редагувати (в роботі 🔒)" : (item ? "Редагувати табличку" : "Нова табличка"));
+    var locked = !!item && !!item.locked;
+    document.getElementById("sheetTitle").textContent = readonly ? "Перегляд позиції" : (item ? "Редагувати табличку" : "Нова табличка");
     deleteRow.hidden = readonly || !item;
     duplicateRow.hidden = readonly || !item;
     saveEditBtn.hidden = readonly;
     document.getElementById("cancelEdit").textContent = readonly ? "Закрити" : "Скасувати";
-    fileAddRow.hidden = readonly || locked;
-    LOCKED_FIELD_IDS.forEach(function(fid){
-      document.getElementById(fid).disabled = readonly || locked;
-    });
+    lockedRow.hidden = !item;
+    fLocked.checked = locked;
+    fLocked.disabled = isViewOnly();
+    applyLockedFieldsUI(readonly, locked);
     [fComment, fManual, fManualPrice, fDone, fReceived, fPayDate].forEach(function(el){
       el.disabled = readonly;
     });
-    Array.prototype.forEach.call(materialSeg.querySelectorAll("button"), function(b){
-      b.disabled = readonly || locked;
-    });
     if(item){
       metaHint.hidden = false;
-      metaHint.textContent = (locked ? "🔒 В роботі — доступні лише коментар і ціна. " : "")+
-        "Створено "+fmtDate(item.createdAt)+(item.createdBy?" ("+item.createdBy+")":"")+
+      metaHint.textContent = "Створено "+fmtDate(item.createdAt)+(item.createdBy?" ("+item.createdBy+")":"")+
         (item.updatedAt && item.updatedAt!==item.createdAt ? " · остання зміна "+fmtDate(item.updatedAt)+(item.updatedBy?" ("+item.updatedBy+")":"") : "");
     } else {
       metaHint.hidden = true;
@@ -1161,6 +1167,26 @@
     editOverlay.classList.add("open");
   }
   function closeEdit(){ editOverlay.classList.remove("open"); editingId = null; }
+
+  // The lock toggle saves immediately (like the card status tags used to),
+  // since the supplier role never sees the Save button — this is the only
+  // control their read-only sheet leaves active.
+  fLocked.addEventListener("change", function(){
+    if(isViewOnly() || !editingId) return;
+    var checked = fLocked.checked;
+    var id = editingId;
+    pullRemote().then(function(){
+      var item = state.items.find(function(i){return i.id===id;});
+      if(!item) return;
+      item.locked = checked;
+      item.updatedAt = Date.now();
+      item.updatedBy = getUserName();
+      save();
+      applyLockedFieldsUI(isRestricted(), checked);
+      render();
+      syncPush();
+    });
+  });
 
   function setMaterialUI(m){
     currentMaterial = m;
@@ -1279,12 +1305,13 @@
           if(editingId){
             var item = state.items.find(function(i){return i.id===editingId;});
             if(item) Object.assign(item, payload);
-            else { payload.id = editingId; payload.createdAt = Date.now(); payload.createdBy = getUserName(); payload.leadDays = state.settings.leadDays; state.items.push(payload); }
+            else { payload.id = editingId; payload.createdAt = Date.now(); payload.createdBy = getUserName(); payload.leadDays = state.settings.leadDays; payload.locked = true; state.items.push(payload); }
           } else {
             payload.id = uid();
             payload.createdAt = Date.now();
             payload.createdBy = getUserName();
             payload.leadDays = state.settings.leadDays;
+            payload.locked = true;
             state.items.push(payload);
           }
           save(); closeEdit(); render(); showToast("Збережено"); syncPush();
@@ -1326,7 +1353,7 @@
       id: uid(), createdAt: Date.now(), createdBy: getUserName(),
       updatedAt: Date.now(), updatedBy: getUserName(),
       leadDays: state.settings.leadDays,
-      done:false, received:false, payDate:"", deleted:false, overdueNotifiedAt:null, locked:false
+      done:false, received:false, payDate:"", deleted:false, overdueNotifiedAt:null, locked:true
     });
     state.items.push(copy);
     save(); closeEdit(); render(); showToast("Позицію продубльовано"); syncPush();
