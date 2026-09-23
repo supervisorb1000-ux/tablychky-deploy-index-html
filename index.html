@@ -410,7 +410,7 @@
     </div>
     <div class="hint" id="cBentHint" hidden></div>
     <div class="checkrow" id="cBothSidesRow" hidden>
-      <label for="cBothSides">Гравіювання з обох сторін</label>
+      <label for="cBothSides">Гравіювання з обох сторін (друга сторона −50%)</label>
       <div class="switch"><input type="checkbox" id="cBothSides" checked><div class="track"><div class="thumb"></div></div></div>
     </div>
     <div class="checkrow">
@@ -1658,7 +1658,7 @@
     var cost = calcPlateCost(w,effH,mult);
     var plate = cost*state.settings.plateMarkup;
     var engrave = calcEngraveCost(ew,eh);
-    if(type==="bent_half" && cBothSides.checked) engrave *= 2;
+    if(type==="bent_half" && cBothSides.checked) engrave *= 1.5;
     var rawTotal = plate+engrave;
     cCost.textContent = fmt(Math.round(cost))+" ₴";
     cPlate.textContent = fmt(Math.round(plate))+" ₴";
