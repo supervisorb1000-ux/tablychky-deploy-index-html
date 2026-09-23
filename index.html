@@ -122,7 +122,7 @@
   .chip.chip-warn{color:var(--danger); border-color:rgba(224,102,92,0.5);}
   .chip.chip-warn.on{background:linear-gradient(120deg,var(--danger),#ff8f7c); color:#fff;}
 
-  .list{display:flex; flex-direction:column; gap:11px; padding-bottom:120px;}
+  .list{display:flex; flex-direction:column; gap:11px; padding-bottom:calc(120px + var(--tabbar-h));}
   .empty{
     text-align:center; padding:44px 20px; color:var(--ink-faint); font-size:13.5px;
     background:var(--field); border:1px dashed var(--glass-line); border-radius:var(--radius);
@@ -175,7 +175,7 @@
   .group-head .gs{font-size:12.5px; color:var(--accent-2);}
 
   .selectbar{
-    position:fixed; left:16px; right:16px; bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:31;
+    position:fixed; left:16px; right:16px; bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--tabbar-h)); z-index:31;
     display:flex; gap:8px; padding:10px; border-radius:18px; background:rgba(12,16,13,0.96);
     border:1px solid var(--glass-line); box-shadow:var(--shadow); backdrop-filter:blur(20px);
   }
@@ -190,7 +190,7 @@
   .card.checked{outline:2px solid var(--accent);}
 
   @media print{
-    header.top, .toolbar, .filters, .summary, .fab, .selectbar, #printBtn, .group-head .gs{display:none!important;}
+    header.top, .toolbar, .filters, .summary, .fab, .selectbar, #printBtn, .group-head .gs, .tabbar, #calcView{display:none!important;}
     .list{padding-bottom:0; gap:14px;}
     html, body{background:#fff!important;}
     .card{
@@ -216,14 +216,38 @@
   }
   .role-view .role-view-badge{display:flex;}
 
+  :root{ --tabbar-h:0px; }
+  body.has-tabs{ --tabbar-h:64px; }
+  .tabbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:25; display:flex;
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    background:rgba(10,13,11,0.97); backdrop-filter:blur(20px); border-top:1px solid var(--glass-line);
+  }
+  .tabbtn{
+    flex:1; border:none; background:none; color:var(--ink-faint); font-family:inherit; font-weight:700;
+    font-size:13px; padding:13px 8px; cursor:pointer;
+  }
+  .tabbtn.on{ color:var(--accent-2); box-shadow:inset 0 2px 0 var(--accent); }
+  .hide-calc .tabbar{ display:none; }
+
   .fab{
-    position:fixed; right:18px; bottom:calc(20px + env(safe-area-inset-bottom,0px)); z-index:30;
+    position:fixed; right:18px; bottom:calc(20px + env(safe-area-inset-bottom,0px) + var(--tabbar-h)); z-index:30;
     width:58px; height:58px; border-radius:50%; border:none; cursor:pointer;
     background:linear-gradient(150deg,var(--accent),var(--accent-deep)); color:var(--accent-ink);
     box-shadow:0 14px 34px rgba(51,209,122,0.45), inset 0 1px 0 rgba(255,255,255,0.35);
     display:grid; place-items:center;
   }
   .fab svg{width:26px; height:26px;}
+
+  .calc-title{font-size:19px; font-weight:800; margin:6px 0 14px;}
+  .calc-wholesale{display:flex; flex-direction:column; gap:8px; margin-bottom:120px;}
+  .calc-wholesale .row{
+    display:flex; justify-content:space-between; align-items:center; padding:11px 14px;
+    background:var(--field); border:1px solid var(--glass-line-soft); border-radius:13px;
+  }
+  .calc-wholesale .row .l{font-size:13px; color:var(--ink-soft); font-weight:600;}
+  .calc-wholesale .row .v{font-size:15px; font-weight:800; color:var(--accent-2);}
+  #calcView{ padding-bottom:20px; }
 
   .overlay{
     position:fixed; inset:0; background:rgba(2,4,3,0.6); backdrop-filter:blur(3px);
@@ -339,27 +363,70 @@
   </div>
 </header>
 
-<div class="summary" id="summary"></div>
-<div class="toolbar">
-  <div class="search-field">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-    <input type="text" id="searchInput" placeholder="Пошук за назвою, коментарем, отворами...">
+<div id="ordersView">
+  <div class="summary" id="summary"></div>
+  <div class="toolbar">
+    <div class="search-field">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" placeholder="Пошук за назвою, коментарем, отворами...">
+    </div>
+    <select class="sort-select" id="sortSelect">
+      <option value="default">За статусом</option>
+      <option value="dateDesc">Спочатку нові</option>
+      <option value="dateAsc">Спочатку старі</option>
+      <option value="priceDesc">Дорожчі спочатку</option>
+      <option value="priceAsc">Дешевші спочатку</option>
+    </select>
+    <select class="sort-select" id="groupSelect">
+      <option value="none">Без групування</option>
+      <option value="day">За днями</option>
+      <option value="week">За тижнями</option>
+    </select>
   </div>
-  <select class="sort-select" id="sortSelect">
-    <option value="default">За статусом</option>
-    <option value="dateDesc">Спочатку нові</option>
-    <option value="dateAsc">Спочатку старі</option>
-    <option value="priceDesc">Дорожчі спочатку</option>
-    <option value="priceAsc">Дешевші спочатку</option>
-  </select>
-  <select class="sort-select" id="groupSelect">
-    <option value="none">Без групування</option>
-    <option value="day">За днями</option>
-    <option value="week">За тижнями</option>
-  </select>
+  <div class="filters" id="filters"></div>
+  <div class="list" id="list"></div>
 </div>
-<div class="filters" id="filters"></div>
-<div class="list" id="list"></div>
+
+<div id="calcView" hidden>
+  <h2 class="calc-title">Прорахунок для клієнта</h2>
+  <div class="field">
+    <label for="cType">Тип таблички</label>
+    <select id="cType">
+      <option value="steel_flat">Нержавійка, пряма</option>
+      <option value="painted_flat" disabled>Чорна фарбована, пряма — незабаром</option>
+      <option value="bent_half" disabled>Гнута навпіл — незабаром</option>
+      <option value="bent_house" disabled>Будиночком — незабаром</option>
+      <option value="bent_l" disabled>З L-подібною ніжкою — незабаром</option>
+    </select>
+  </div>
+  <div id="cReady">
+    <div class="settings-note">Собівартість береться за тими ж налаштуваннями (ціна металу, коефіцієнт, множник), що й у замовленнях.</div>
+    <div class="row2">
+      <div class="field"><label for="cW">Ширина таблички, мм</label><input type="number" id="cW" inputmode="decimal" placeholder="180"></div>
+      <div class="field"><label for="cH">Висота таблички, мм</label><input type="number" id="cH" inputmode="decimal" placeholder="130"></div>
+    </div>
+    <div class="checkrow">
+      <label for="cSameEngrave">Гравіювання на всю табличку</label>
+      <div class="switch"><input type="checkbox" id="cSameEngrave" checked><div class="track"><div class="thumb"></div></div></div>
+    </div>
+    <div class="row2" id="cEngraveSizeRow" hidden>
+      <div class="field"><label for="cEW">Ширина макета, мм</label><input type="number" id="cEW" inputmode="decimal"></div>
+      <div class="field"><label for="cEH">Висота макета, мм</label><input type="number" id="cEH" inputmode="decimal"></div>
+    </div>
+
+    <div class="price-preview">
+      <div class="pp-row"><div class="l">Собівартість таблички</div><div class="v num" id="cCost">0 ₴</div></div>
+      <div class="pp-row"><div class="l">Вартість таблички</div><div class="v num" id="cPlate">0 ₴</div></div>
+      <div class="pp-row"><div class="l">Вартість гравіювання</div><div class="v num" id="cEngrave">0 ₴</div></div>
+      <div class="pp-row total"><div class="l">Разом за 1 шт</div><div class="v num" id="cTotal">0 ₴</div></div>
+    </div>
+
+    <div class="settings-note">Оптові ціни за штуку (округлені до 5 ₴):</div>
+    <div id="cWholesale" class="calc-wholesale"></div>
+  </div>
+  <div class="empty" id="cNotReady" hidden>Формула для цього типу ще не додана.</div>
+</div>
+
 <div class="selectbar" id="selectBar" hidden>
   <span class="cnt" id="selectCount">0 вибрано</span>
   <button class="btn ghost" id="selDone">Виконано</button>
@@ -371,6 +438,11 @@
 <button class="fab" id="addBtn" aria-label="Додати позицію">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
 </button>
+
+<div class="tabbar" id="tabbar">
+  <button type="button" class="tabbtn on" id="tabOrders">Замовлення</button>
+  <button type="button" class="tabbtn" id="tabCalc">Прорахунок</button>
+</div>
 
 <div class="overlay" id="editOverlay">
   <div class="sheet">
@@ -558,6 +630,23 @@
         <input type="number" id="sLeadDays" inputmode="numeric" min="1">
       </div>
     </div>
+    <div class="settings-note">
+      Налаштування для вкладки "Прорахунок" (ціна для клієнта): вартість таблички = собівартість × націнка; вартість гравіювання = базова ціна за перші 10 000 мм² макета, далі +крок за кожні наступні (неповні теж) 10 000 мм².
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label for="sPlateMarkup">Націнка на табличку (×)</label>
+        <input type="number" id="sPlateMarkup" inputmode="decimal" step="0.1">
+      </div>
+      <div class="field">
+        <label for="sEngraveBase">Гравіювання — база, ₴</label>
+        <input type="number" id="sEngraveBase" inputmode="decimal">
+      </div>
+    </div>
+    <div class="field">
+      <label for="sEngraveStep">Гравіювання — крок за 10 000 мм², ₴</label>
+      <input type="number" id="sEngraveStep" inputmode="decimal">
+    </div>
     <div class="btnrow">
       <button class="btn ghost" id="resetDefaults">Скинути до типових</button>
     </div>
@@ -609,11 +698,14 @@
   function isRestricted(){ return isViewOnly() || isSupplier(); }
   function applyRoleUI(){
     document.body.classList.toggle("role-view", isRestricted());
+    document.body.classList.toggle("has-tabs", !isSupplier());
+    document.body.classList.toggle("hide-calc", isSupplier());
     var badge = document.querySelector(".role-view-badge");
     if(badge) badge.textContent = isSupplier() ? "Постачальник" : "Перегляд";
+    if(isSupplier() && currentView==="calc") showView("orders");
   }
   var API = "/api/state";
-  var DEFAULTS = { rate:160, multSteel:4.3, multPainted:5.3, coef:0.0000077, multBent:6, leadDays:2 };
+  var DEFAULTS = { rate:160, multSteel:4.3, multPainted:5.3, coef:0.0000077, multBent:6, leadDays:2, plateMarkup:1.7, engraveBase:150, engraveStep:75 };
   var BENT_SHAPES = ["Гнута навпіл", "Будиночком", "З L-подібною ніжкою"];
 
   function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -1376,7 +1468,8 @@
   var sRate=document.getElementById("sRate"), sMultSteel=document.getElementById("sMultSteel"),
       sMultPainted=document.getElementById("sMultPainted"), sCoef=document.getElementById("sCoef"),
       sMultBent=document.getElementById("sMultBent"), sLeadDays=document.getElementById("sLeadDays"),
-      sUserName=document.getElementById("sUserName");
+      sUserName=document.getElementById("sUserName"), sPlateMarkup=document.getElementById("sPlateMarkup"),
+      sEngraveBase=document.getElementById("sEngraveBase"), sEngraveStep=document.getElementById("sEngraveStep");
 
   function openSettings(){
     if(isRestricted()) return;
@@ -1386,6 +1479,9 @@
     sCoef.value = state.settings.coef;
     sMultBent.value = state.settings.multBent;
     sLeadDays.value = state.settings.leadDays;
+    sPlateMarkup.value = state.settings.plateMarkup;
+    sEngraveBase.value = state.settings.engraveBase;
+    sEngraveStep.value = state.settings.engraveStep;
     sUserName.value = getUserName();
     settingsOverlay.classList.add("open");
   }
@@ -1402,7 +1498,10 @@
       multPainted: Number(sMultPainted.value)||DEFAULTS.multPainted,
       coef: Number(sCoef.value)||DEFAULTS.coef,
       multBent: Number(sMultBent.value)||DEFAULTS.multBent,
-      leadDays: Number(sLeadDays.value)||DEFAULTS.leadDays
+      leadDays: Number(sLeadDays.value)||DEFAULTS.leadDays,
+      plateMarkup: Number(sPlateMarkup.value)||DEFAULTS.plateMarkup,
+      engraveBase: Number(sEngraveBase.value)||DEFAULTS.engraveBase,
+      engraveStep: Number(sEngraveStep.value)||DEFAULTS.engraveStep
     };
     var changed = Object.keys(next).some(function(k){ return next[k]!==state.settings[k]; });
     settingsOverlay.classList.remove("open");
@@ -1422,6 +1521,8 @@
     sRate.value = DEFAULTS.rate; sMultSteel.value = DEFAULTS.multSteel;
     sMultPainted.value = DEFAULTS.multPainted; sCoef.value = DEFAULTS.coef;
     sMultBent.value = DEFAULTS.multBent; sLeadDays.value = DEFAULTS.leadDays;
+    sPlateMarkup.value = DEFAULTS.plateMarkup; sEngraveBase.value = DEFAULTS.engraveBase;
+    sEngraveStep.value = DEFAULTS.engraveStep;
   });
   document.getElementById("exportData").addEventListener("click", function(){
     var blob = new Blob([JSON.stringify(state, null, 2)], { type:"application/json" });
@@ -1477,6 +1578,70 @@
   document.addEventListener("visibilitychange", function(){
     if(document.visibilityState==="visible") syncPull();
   });
+
+  // ---------- tabs: orders / calculator ----------
+  var currentView = "orders";
+  var ordersViewEl = document.getElementById("ordersView"), calcViewEl = document.getElementById("calcView"),
+      tabOrdersBtn = document.getElementById("tabOrders"), tabCalcBtn = document.getElementById("tabCalc");
+  function showView(v){
+    if(v==="calc" && isSupplier()) v = "orders";
+    currentView = v;
+    ordersViewEl.hidden = v!=="orders";
+    calcViewEl.hidden = v!=="calc";
+    document.getElementById("addBtn").hidden = v!=="orders";
+    tabOrdersBtn.classList.toggle("on", v==="orders");
+    tabCalcBtn.classList.toggle("on", v==="calc");
+  }
+  tabOrdersBtn.addEventListener("click", function(){ showView("orders"); });
+  tabCalcBtn.addEventListener("click", function(){ showView("calc"); updateCalc(); });
+
+  // ---------- calculator (client quote) ----------
+  var cType=document.getElementById("cType"), cW=document.getElementById("cW"), cH=document.getElementById("cH"),
+      cSameEngrave=document.getElementById("cSameEngrave"), cEngraveSizeRow=document.getElementById("cEngraveSizeRow"),
+      cEW=document.getElementById("cEW"), cEH=document.getElementById("cEH"),
+      cCost=document.getElementById("cCost"), cPlate=document.getElementById("cPlate"),
+      cEngrave=document.getElementById("cEngrave"), cTotal=document.getElementById("cTotal"),
+      cWholesaleEl=document.getElementById("cWholesale"), cReady=document.getElementById("cReady"), cNotReady=document.getElementById("cNotReady");
+  var CALC_ENGRAVE_TILE = 10000;
+  var WHOLESALE_TIERS = [
+    { label:"Від 5 до 10 шт", mult:0.95, note:"−5%" },
+    { label:"Від 10 до 20 шт", mult:0.93, note:"−7%" },
+    { label:"Від 20 і більше", mult:0.85, note:"−15%" },
+    { label:"Від 50 і більше", mult:0.50, note:"−50%" }
+  ];
+  function roundUp5(n){ return Math.ceil(n/5)*5; }
+  function calcPlateCost(w,h){ return w*h*state.settings.coef*state.settings.rate*state.settings.multSteel; }
+  function calcEngraveCost(ew,eh){
+    var area = (Number(ew)||0)*(Number(eh)||0);
+    var base = state.settings.engraveBase, step = state.settings.engraveStep;
+    if(area<=CALC_ENGRAVE_TILE) return base;
+    return base + Math.ceil((area-CALC_ENGRAVE_TILE)/CALC_ENGRAVE_TILE)*step;
+  }
+  function updateCalc(){
+    cReady.hidden = cType.value!=="steel_flat";
+    cNotReady.hidden = cType.value==="steel_flat";
+    if(cType.value!=="steel_flat") return;
+    var w = Number(cW.value)||0, h = Number(cH.value)||0;
+    var ew = cSameEngrave.checked ? w : (Number(cEW.value)||0);
+    var eh = cSameEngrave.checked ? h : (Number(cEH.value)||0);
+    var cost = calcPlateCost(w,h);
+    var plate = cost*state.settings.plateMarkup;
+    var engrave = calcEngraveCost(ew,eh);
+    var rawTotal = plate+engrave;
+    cCost.textContent = fmt(Math.round(cost))+" ₴";
+    cPlate.textContent = fmt(Math.round(plate))+" ₴";
+    cEngrave.textContent = fmt(Math.round(engrave))+" ₴";
+    cTotal.textContent = fmt(roundUp5(rawTotal))+" ₴";
+    cWholesaleEl.innerHTML = WHOLESALE_TIERS.map(function(t){
+      return '<div class="row"><span class="l">'+t.label+' ('+t.note+')</span><span class="v num">'+fmt(roundUp5(rawTotal*t.mult))+' ₴</span></div>';
+    }).join("");
+  }
+  cType.addEventListener("change", updateCalc);
+  cSameEngrave.addEventListener("change", function(){
+    cEngraveSizeRow.hidden = cSameEngrave.checked;
+    updateCalc();
+  });
+  [cW,cH,cEW,cEH].forEach(function(el){ el.addEventListener("input", updateCalc); });
 
   applyRoleUI();
   render();
