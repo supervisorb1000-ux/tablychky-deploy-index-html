@@ -394,8 +394,8 @@
     <select id="cType">
       <option value="steel_flat">Нержавійка, пряма</option>
       <option value="painted_flat">Чорна фарбована, пряма</option>
-      <option value="bent_half" disabled>Гнута навпіл — уточнюємо формулу</option>
-      <option value="bent_l" disabled>З L-подібною ніжкою — уточнюємо формулу</option>
+      <option value="bent_half">Гнута навпіл</option>
+      <option value="bent_l">З L-подібною ніжкою</option>
     </select>
   </div>
   <div id="cReady">
@@ -404,6 +404,11 @@
       <div class="field"><label for="cW">Ширина таблички, мм</label><input type="number" id="cW" inputmode="decimal" placeholder="180"></div>
       <div class="field"><label for="cH">Висота таблички, мм</label><input type="number" id="cH" inputmode="decimal" placeholder="130"></div>
     </div>
+    <div class="field" id="cLegRow" hidden>
+      <label for="cLegCm">Розмір ніжки, см</label>
+      <input type="number" id="cLegCm" inputmode="decimal" placeholder="3">
+    </div>
+    <div class="hint" id="cBentHint" hidden></div>
     <div class="checkrow">
       <label for="cSameEngrave">Гравіювання на всю табличку</label>
       <div class="switch"><input type="checkbox" id="cSameEngrave" checked><div class="track"><div class="thumb"></div></div></div>
@@ -1595,6 +1600,7 @@
 
   // ---------- calculator (client quote) ----------
   var cType=document.getElementById("cType"), cW=document.getElementById("cW"), cH=document.getElementById("cH"),
+      cLegRow=document.getElementById("cLegRow"), cLegCm=document.getElementById("cLegCm"), cBentHint=document.getElementById("cBentHint"),
       cSameEngrave=document.getElementById("cSameEngrave"), cEngraveSizeRow=document.getElementById("cEngraveSizeRow"),
       cEW=document.getElementById("cEW"), cEH=document.getElementById("cEH"),
       cCost=document.getElementById("cCost"), cPlate=document.getElementById("cPlate"),
@@ -1607,7 +1613,7 @@
     { label:"Від 20 і більше", mult:0.85, note:"−15%" },
     { label:"Від 50 і більше", mult:0.50, note:"−50%" }
   ];
-  var CALC_READY_TYPES = ["steel_flat","painted_flat"];
+  var CALC_READY_TYPES = ["steel_flat","painted_flat","bent_half","bent_l"];
   function roundUp5(n){ return Math.ceil(n/5)*5; }
   function calcPlateCost(w,h,mult){ return w*h*state.settings.coef*state.settings.rate*mult; }
   function calcEngraveCost(ew,eh){
@@ -1616,16 +1622,34 @@
     if(area<=CALC_ENGRAVE_TILE) return base;
     return base + Math.ceil((area-CALC_ENGRAVE_TILE)/CALC_ENGRAVE_TILE)*step;
   }
+  // The height typed in is what shows/gets engraved; the metal itself needs
+  // extra height for the fold (and, for the L-leg, the leg length) — these
+  // two heights are deliberately different, only the second feeds the cost.
+  function effectiveHeight(type, h, legCm){
+    if(type==="bent_half") return h*2+2;
+    if(type==="bent_l") return h+(Number(legCm)||0)*10+10;
+    return h;
+  }
   function updateCalc(){
-    var ready = CALC_READY_TYPES.indexOf(cType.value)!==-1;
+    var type = cType.value;
+    var ready = CALC_READY_TYPES.indexOf(type)!==-1;
     cReady.hidden = !ready;
     cNotReady.hidden = ready;
+    cLegRow.hidden = type!=="bent_l";
     if(!ready) return;
     var w = Number(cW.value)||0, h = Number(cH.value)||0;
+    var isBentType = type==="bent_half" || type==="bent_l";
+    var effH = effectiveHeight(type, h, cLegCm.value);
+    if(isBentType){
+      cBentHint.hidden = false;
+      cBentHint.textContent = "Розрахункова висота металу (з урахуванням "+(type==="bent_half"?"загину":"ніжки й загину")+"): "+fmt(Math.round(effH))+" мм";
+    } else {
+      cBentHint.hidden = true;
+    }
     var ew = cSameEngrave.checked ? w : (Number(cEW.value)||0);
     var eh = cSameEngrave.checked ? h : (Number(cEH.value)||0);
-    var mult = cType.value==="painted_flat" ? state.settings.multPainted : state.settings.multSteel;
-    var cost = calcPlateCost(w,h,mult);
+    var mult = isBentType ? state.settings.multBent : (type==="painted_flat" ? state.settings.multPainted : state.settings.multSteel);
+    var cost = calcPlateCost(w,effH,mult);
     var plate = cost*state.settings.plateMarkup;
     var engrave = calcEngraveCost(ew,eh);
     var rawTotal = plate+engrave;
@@ -1642,7 +1666,7 @@
     cEngraveSizeRow.hidden = cSameEngrave.checked;
     updateCalc();
   });
-  [cW,cH,cEW,cEH].forEach(function(el){ el.addEventListener("input", updateCalc); });
+  [cW,cH,cEW,cEH,cLegCm].forEach(function(el){ el.addEventListener("input", updateCalc); });
 
   applyRoleUI();
   render();
