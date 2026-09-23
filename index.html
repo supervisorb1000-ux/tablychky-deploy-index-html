@@ -743,8 +743,10 @@
   }
   var tokenOverlay = document.getElementById("tokenOverlay"), tokenInput = document.getElementById("tokenInput"),
       tokenOkBtn = document.getElementById("tokenOk"), tokenCancelBtn = document.getElementById("tokenCancel");
+  var pendingTokenPrompt = null;
   function showTokenPrompt(){
-    return new Promise(function(resolve){
+    if(pendingTokenPrompt) return pendingTokenPrompt;
+    pendingTokenPrompt = new Promise(function(resolve){
       tokenInput.value = "";
       tokenOverlay.classList.add("open");
       setTimeout(function(){ tokenInput.focus(); }, 50);
@@ -754,6 +756,7 @@
         tokenCancelBtn.removeEventListener("click", onCancel);
         tokenInput.removeEventListener("keydown", onKey);
         tokenOverlay.removeEventListener("click", onBackdrop);
+        pendingTokenPrompt = null;
         resolve(result);
       }
       function onOk(){ cleanup(tokenInput.value.trim() || null); }
@@ -765,6 +768,7 @@
       tokenInput.addEventListener("keydown", onKey);
       tokenOverlay.addEventListener("click", onBackdrop);
     });
+    return pendingTokenPrompt;
   }
   function apiFetch(url, opts){
     opts = opts || {};
