@@ -436,6 +436,10 @@
     <div class="settings-note">Оптові ціни за штуку (округлені до 5 ₴):</div>
     <div id="cWholesale" class="calc-wholesale"></div>
 
+    <div class="btnrow">
+      <button class="btn primary" id="cShareBtn">📤 Поділитися розрахунком</button>
+    </div>
+
     <div class="field" id="cQtyRow" hidden>
       <label for="cQty">Кількість в угоді, шт</label>
       <input type="number" id="cQty" inputmode="numeric" min="1" value="1">
@@ -1718,6 +1722,31 @@
   });
   cBothSides.addEventListener("change", updateCalc);
   [cDiscPlate,cDiscEngrave,cQty].forEach(function(el){ el.addEventListener("input", updateCalc); });
+
+  function buildShareText(){
+    var typeLabel = cType.options[cType.selectedIndex].text;
+    var lines = ["Табличка: "+typeLabel, "Розмір: "+(cW.value||0)+"×"+(cH.value||0)+" мм"];
+    if(cType.value==="bent_l" && cLegCm.value) lines.push("Ніжка: "+cLegCm.value+" см");
+    lines.push("", "Ціна за 1 шт: "+cTotal.textContent);
+    var rows = cWholesaleEl.querySelectorAll(".row");
+    if(rows.length){
+      lines.push("", "Оптові ціни:");
+      Array.prototype.forEach.call(rows, function(row){
+        lines.push(row.querySelector(".l").textContent+": "+row.querySelector(".v").textContent);
+      });
+    }
+    return lines.join("\n");
+  }
+  document.getElementById("cShareBtn").addEventListener("click", function(){
+    var text = buildShareText();
+    if(navigator.share){
+      navigator.share({ text: text }).catch(function(){});
+    } else if(navigator.clipboard){
+      navigator.clipboard.writeText(text).then(function(){ showToast("Скопійовано в буфер"); }).catch(function(){ showToast("Не вдалося скопіювати"); });
+    } else {
+      showToast("Копіювання не підтримується цим браузером");
+    }
+  });
   [cW,cH,cEW,cEH,cLegCm].forEach(function(el){ el.addEventListener("input", updateCalc); });
 
   applyRoleUI();
