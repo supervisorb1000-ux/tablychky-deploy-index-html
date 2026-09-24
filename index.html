@@ -431,9 +431,10 @@
       <div class="pp-row"><div class="l">Вартість таблички</div><div class="v num" id="cPlate">0 ₴</div></div>
       <div class="pp-row"><div class="l">Вартість гравіювання</div><div class="v num" id="cEngrave">0 ₴</div></div>
       <div class="pp-row total"><div class="l">Разом за 1 шт</div><div class="v num" id="cTotal">0 ₴</div></div>
+      <div class="pp-row"><div class="l">🔁 Рекомендована ціна</div><div class="v num" id="cTotalRounded">0 ₴</div></div>
     </div>
 
-    <div class="settings-note">Оптові ціни за штуку (округлені до 5 ₴):</div>
+    <div class="settings-note">Оптові ціни за штуку (🔁 — рекомендована, округлена до 5 ₴):</div>
     <div id="cWholesale" class="calc-wholesale"></div>
 
     <div class="field" id="cQtyRow" hidden>
@@ -1635,6 +1636,7 @@
       cEW=document.getElementById("cEW"), cEH=document.getElementById("cEH"),
       cCost=document.getElementById("cCost"), cPlate=document.getElementById("cPlate"),
       cEngrave=document.getElementById("cEngrave"), cTotal=document.getElementById("cTotal"),
+      cTotalRounded=document.getElementById("cTotalRounded"),
       cWholesaleEl=document.getElementById("cWholesale"), cReady=document.getElementById("cReady"), cNotReady=document.getElementById("cNotReady");
   var CALC_ENGRAVE_TILE = 10000;
   var WHOLESALE_TIERS = [
@@ -1701,12 +1703,14 @@
     cPlate.textContent = fmt(Math.round(plate))+" ₴";
     cEngrave.textContent = fmt(Math.round(engrave))+" ₴";
     var unitPriceBase = roundUp5(rawTotal);
-    cTotal.textContent = fmt(unitPriceBase)+" ₴";
+    cTotal.textContent = fmt(Math.round(rawTotal))+" ₴";
+    cTotalRounded.textContent = fmt(unitPriceBase)+" ₴";
     var prevTierPrice = unitPriceBase;
     cWholesaleEl.innerHTML = WHOLESALE_TIERS.map(function(t){
-      var price = Math.min(roundUp5(rawTotal*t.mult), prevTierPrice-5);
+      var exact = rawTotal*t.mult;
+      var price = Math.min(roundUp5(exact), prevTierPrice-5);
       prevTierPrice = price;
-      return '<div class="row"><span class="l">'+t.label+' ('+t.note+')</span><span class="v num">'+fmt(price)+' ₴</span></div>';
+      return '<div class="row"><span class="l">'+t.label+' ('+t.note+')</span><span class="v num">'+fmt(Math.round(exact))+' ₴ &nbsp;🔁 <span class="v-recommended">'+fmt(price)+' ₴</span></span></div>';
     }).join("");
 
     var showMargin = currentRole==="edit";
@@ -1735,12 +1739,12 @@
     var typeLabel = cType.options[cType.selectedIndex].text;
     var lines = ["Табличка: "+typeLabel, "Розмір: "+(cW.value||0)+"×"+(cH.value||0)+" мм"];
     if(cType.value==="bent_l" && cLegCm.value) lines.push("Ніжка: "+cLegCm.value+" см");
-    lines.push("", "Ціна за 1 шт: "+cTotal.textContent);
+    lines.push("", "Ціна за 1 шт: "+cTotalRounded.textContent);
     var rows = cWholesaleEl.querySelectorAll(".row");
     if(rows.length){
       lines.push("", "Оптові ціни:");
       Array.prototype.forEach.call(rows, function(row){
-        lines.push(row.querySelector(".l").textContent+": "+row.querySelector(".v").textContent);
+        lines.push(row.querySelector(".l").textContent+": "+row.querySelector(".v-recommended").textContent);
       });
     }
     return lines.join("\n");
