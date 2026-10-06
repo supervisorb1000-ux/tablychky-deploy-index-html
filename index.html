@@ -379,7 +379,7 @@
     </select>
     <select class="sort-select" id="groupSelect">
       <option value="none">Без групування</option>
-      <option value="day">За днями</option>
+      <option value="day" selected>За днями</option>
       <option value="week">За тижнями</option>
     </select>
   </div>
@@ -913,7 +913,7 @@
   var currentFilter = "all";
   var searchQuery = "";
   var sortMode = "default";
-  var groupMode = "none";
+  var groupMode = "day";
   var selectMode = false;
   var selectedIds = {};
 
@@ -1034,15 +1034,42 @@
     "priceDesc": function(a,b){ return computePrice(b,state.settings)-computePrice(a,state.settings); },
     "priceAsc": function(a,b){ return computePrice(a,state.settings)-computePrice(b,state.settings); }
   };
+  function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
   function groupKey(item){
     var d = new Date(item.createdAt);
-    if(groupMode==="day") return d.toLocaleDateString("uk-UA",{day:"2-digit",month:"long",year:"numeric"});
+    if(groupMode==="day"){
+      var now = new Date(), yesterday = new Date(now.getTime()-86400000);
+      if(sameDay(d,now)) return "Сьогодні";
+      if(sameDay(d,yesterday)) return "Вчора";
+      return d.toLocaleDateString("uk-UA",{day:"2-digit",month:"long",year:"numeric"});
+    }
     if(groupMode==="week"){
       var jan1 = new Date(d.getFullYear(),0,1);
       var week = Math.ceil((((d-jan1)/86400000)+jan1.getDay()+1)/7);
       return week+"-й тиждень, "+d.getFullYear();
     }
     return null;
+  }
+  // Groups+sorts a set of items for display (day/week headers, or a flat
+  // sorted list when groupMode is "none"); shared by the main list and the
+  // trailing "done, unpaid" section below.
+  function groupedHtml(items, sorter){
+    if(groupMode==="none"){
+      return items.slice().sort(sorter).map(cardHtml).join("");
+    }
+    var byKey = {}, groups = [];
+    items.forEach(function(item){
+      var gk = groupKey(item);
+      if(!byKey[gk]){ byKey[gk] = { key:gk, items:[], latest:item.createdAt }; groups.push(byKey[gk]); }
+      byKey[gk].items.push(item);
+      if(item.createdAt > byKey[gk].latest) byKey[gk].latest = item.createdAt;
+    });
+    groups.sort(function(a,b){ return b.latest-a.latest; });
+    return groups.map(function(g){
+      var sum = g.items.reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
+      return '<div class="group-head"><span class="gt">'+esc(g.key)+'</span><span class="gs">'+fmt(sum)+' ₴</span></div>'
+        + g.items.slice().sort(sorter).map(cardHtml).join("");
+    }).join("");
   }
   function renderList(){
     var items = baseFiltered();
@@ -1052,25 +1079,20 @@
     }
     var sorter = SORTERS[sortMode]||SORTERS.default;
     var html = "";
-    if(groupMode==="none"){
-      html = items.slice().sort(sorter).map(cardHtml).join("");
+    if(currentFilter==="archive"){
+      html = groupedHtml(items, sorter);
     } else {
-      // Group first by day/week (so a chosen sort never scatters one
-      // day's orders across the list and duplicates its header), then
-      // sort inside each group.
-      var byKey = {}, groups = [];
-      items.forEach(function(item){
-        var gk = groupKey(item);
-        if(!byKey[gk]){ byKey[gk] = { key:gk, items:[], latest:item.createdAt }; groups.push(byKey[gk]); }
-        byKey[gk].items.push(item);
-        if(item.createdAt > byKey[gk].latest) byKey[gk].latest = item.createdAt;
-      });
-      groups.sort(function(a,b){ return b.latest-a.latest; });
-      groups.forEach(function(g){
-        var sum = g.items.reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
-        html += '<div class="group-head"><span class="gt">'+esc(g.key)+'</span><span class="gs">'+fmt(sum)+' ₴</span></div>';
-        html += g.items.slice().sort(sorter).map(cardHtml).join("");
-      });
+      // Completed-but-unpaid orders are pulled out of the day/week grouping
+      // into one section at the bottom, so they stop competing for
+      // attention with genuinely new orders above.
+      var activeItems = items.filter(function(i){ return statusRank(i)===0; });
+      var doneUnpaidItems = items.filter(function(i){ return statusRank(i)===1; });
+      html = groupedHtml(activeItems, sorter);
+      if(doneUnpaidItems.length){
+        var sum = doneUnpaidItems.reduce(function(a,i){ return a+computePrice(i,state.settings); },0);
+        html += '<div class="group-head"><span class="gt">Виконано, не оплачено</span><span class="gs">'+fmt(sum)+' ₴</span></div>'
+          + doneUnpaidItems.slice().sort(sorter).map(cardHtml).join("");
+      }
     }
     listEl.innerHTML = html;
     Array.prototype.forEach.call(listEl.querySelectorAll(".card"), function(card){
